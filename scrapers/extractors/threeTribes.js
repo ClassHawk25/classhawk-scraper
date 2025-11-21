@@ -2,13 +2,11 @@ import puppeteer from 'puppeteer';
 
 export default async function scrapeThreeTribes(browser, config) {
   const page = await browser.newPage();
-  // Wide viewport for calendar popup
   await page.setViewport({ width: 1300, height: 900 });
 
   let masterList = [];
   const urls = config.locations || [config.url];
 
-  // Helper: Date Calculator
   const calculateDate = (startDateObj, dayIndex) => {
       const target = new Date(startDateObj); 
       target.setDate(target.getDate() + dayIndex);
@@ -23,33 +21,23 @@ export default async function scrapeThreeTribes(browser, config) {
 
   for (const url of urls) {
       const locationName = formatLocation(url);
-      console.log(`[3Tribes] -----------------------------------`);
       console.log(`[3Tribes] Navigating to: ${locationName}`);
 
       try {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        // 1. Find Frame
         let targetFrame = page.mainFrame();
         const frames = page.frames();
         const mbFrame = frames.find(f => f.url().includes('mindbody') || f.url().includes('healcode'));
         if (mbFrame) targetFrame = mbFrame;
 
-        // 2. Wait for Widget
         try {
             await targetFrame.waitForSelector('.bw-session', { timeout: 15000 });
-            console.log(`[3Tribes] Widget loaded.`);
-        } catch(e) {
-            console.log(`[3Tribes] Widget failed to load.`);
-            continue;
-        }
+        } catch(e) { continue; }
 
         let currentListStartDate = new Date();
 
-        // 3. Loop for 4 Weeks
         for (let i = 0; i < 4; i++) {
-            
-            // --- SCRAPE DATA ---
             const weeklyClasses = await targetFrame.evaluate((locName) => {
                 const results = [];
                 const dayColumns = document.querySelectorAll('.bw-widget__day');
@@ -57,44 +45,42 @@ export default async function scrapeThreeTribes(browser, config) {
                 dayColumns.forEach((col, colIndex) => {
                     const sessions = col.querySelectorAll('.bw-session');
                     sessions.forEach(el => {
-                        // Time
-                        const timeEl = el.querySelector('.bw-session__time');
-                        let start_time = timeEl ? timeEl.innerText.trim() : '00:00';
-                        start_time = start_time.split(/\s[-–]\s/)[0].replace(' GMT', '').trim(); 
+                        const text = el.innerText; 
+                        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-                        // Class Name
-                        const nameEl = el.querySelector('.bw-session__name');
-                        const class_name = nameEl ? nameEl.innerText.trim() : 'Unknown Class';
-
-                        // --- INSTRUCTOR FIX ---
-                        let instructor = 'Staff';
-                        
-                        // 1. Try the dedicated instructor element
-                        const trainerEl = el.querySelector('.bw-session__instructor');
-                        if (trainerEl) {
-                            let text = trainerEl.innerText.trim();
-                            // Remove "with " prefix if present
-                            if (text.toLowerCase().startsWith('with ')) {
-                                text = text.substring(5).trim();
-                            }
-                            // Remove "w/ " prefix
-                            if (text.toLowerCase().startsWith('w/ ')) {
-                                text = text.substring(3).trim();
-                            }
-                            
-                            if (text.length > 1) instructor = text;
+                        // 1. Find Time
+                        let start_time = '00:00';
+                        const timeIndex = lines.findIndex(l => /\d{1,2}:\d{2}\s*(?:AM|PM)/i.test(l));
+                        if (timeIndex > -1) {
+                            start_time = lines[timeIndex].split(/\s[-–]\s/)[0].replace(' GMT', '').trim();
                         }
 
-                        // 2. Fallback: If still "Staff", check row text for "with [Name]"
-                        if (instructor === 'Staff') {
-                            const fullText = el.innerText;
-                            const withMatch = fullText.match(/with\s+([A-Za-z]+)/i);
-                            if (withMatch && withMatch[1]) {
-                                instructor = withMatch[1];
-                            }
+                        // 2. Find Class Name
+                        // Usually the first non-time line
+                        let class_name = "Unknown Class";
+                        const titleIndex = lines.findIndex((l, idx) => idx !== timeIndex && l.length > 3);
+                        if (titleIndex > -1) class_name = lines[titleIndex];
+
+                        // 3. Find Instructor (SUBTRACTIVE METHOD)
+                        // Find the line that is NOT Time, NOT Class Name, NOT Button
+                        let instructor = "Staff";
+                        const potentialInstructors = lines.filter((l, idx) => 
+                            idx !== timeIndex && 
+                            idx !== titleIndex &&
+                            !l.toLowerCase().includes('book') &&
+                            !l.toLowerCase().includes('waitlist') &&
+                            !l.toLowerCase().includes('cancel') &&
+                            l.length > 2
+                        );
+
+                        if (potentialInstructors.length > 0) {
+                            instructor = potentialInstructors[0];
                         }
 
-                        const status = el.innerText.toLowerCase().includes('waitlist') ? 'Waitlist' : 'Open';
+                        // Cleanup
+                        instructor = instructor.replace(/^with\s+/i, '').replace(/^w\/\s+/i, '');
+
+                        const status = text.toLowerCase().includes('waitlist') ? 'Waitlist' : 'Open';
 
                         results.push({
                             gym: '3Tribes',
@@ -127,7 +113,7 @@ export default async function scrapeThreeTribes(browser, config) {
             });
             masterList = masterList.concat(processedClasses);
 
-            // --- NAVIGATION ---
+            // Navigation (Same as before)
             currentListStartDate.setDate(currentListStartDate.getDate() + 7);
             const targetDayNum = currentListStartDate.getDate(); 
 
@@ -136,20 +122,16 @@ export default async function scrapeThreeTribes(browser, config) {
                 if (btn) { btn.click(); return true; }
                 return false;
             });
-
             if (!opened) break;
             await new Promise(r => setTimeout(r, 1000));
 
-            // Smart Date Picker
             const dayClicked = await targetFrame.evaluate(async (dayNum) => {
                 const findDay = () => {
                     const cells = Array.from(document.querySelectorAll('td'));
                     return cells.find(c => c.innerText.trim() == dayNum && !c.classList.contains('is-disabled') && !c.classList.contains('is-outside-current-month'));
                 };
-                
                 let cell = findDay();
                 if (!cell) {
-                    // Flip month if day not found
                     const nextArrow = document.querySelector('.pika-next') || document.querySelector('.bw-calendar-next');
                     if (nextArrow) { nextArrow.click(); return 'WAIT'; }
                 }
@@ -172,28 +154,18 @@ export default async function scrapeThreeTribes(browser, config) {
                 const ok = buttons.find(b => b.innerText === 'OK');
                 if (ok) ok.click();
             });
-
             await new Promise(r => setTimeout(r, 4000));
         }
-
-      } catch (err) {
-          console.log(`[3Tribes] Error extracting ${url}: ${err.message}`);
-      }
+      } catch (err) { console.log(`[3Tribes] Error: ${err.message}`); }
   }
 
   await page.close();
-
-  // Deduplicate
   const uniqueClasses = [];
   const seen = new Set();
   masterList.forEach(c => {
       const key = `${c.location}-${c.raw_date}-${c.start_time}-${c.class_name}`;
-      if (!seen.has(key)) {
-          seen.add(key);
-          uniqueClasses.push(c);
-      }
+      if (!seen.has(key)) { seen.add(key); uniqueClasses.push(c); }
   });
-
   console.log(`[3Tribes] Success! Total Clean Count: ${uniqueClasses.length}`);
   return uniqueClasses;
 }

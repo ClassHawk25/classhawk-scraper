@@ -42,60 +42,62 @@ export default async function scrapeBSTLagree(browser, config) {
 
             const dailyClasses = await targetFrame.evaluate(() => {
                 const results = [];
-                // Use 'article' or 'li' as row containers based on typical Mariana layout
-                // Falling back to divs that look like rows
-                const allDivs = Array.from(document.querySelectorAll('div'));
-                
+                const dateHeader = document.querySelector('h2, .header-date');
+                const raw_date = dateHeader ? dateHeader.innerText.trim() : 'Unknown Date';
+
+                const allDivs = Array.from(document.querySelectorAll('div, li'));
                 const classRows = allDivs.filter(div => {
-                    const t = div.innerText;
-                    // Strict check: Must have Time AND Duration AND Button
-                    return /\b\d{1,2}:\d{2}\b/.test(t) && 
-                           t.includes('min.') && 
-                           (t.toUpperCase().includes('RESERVE') || t.toUpperCase().includes('WAITLIST'));
+                    const t = div.innerText.toLowerCase();
+                    return /\b\d{1,2}:\d{2}\b/.test(div.innerText) && 
+                           (t.includes('reserve') || t.includes('waitlist') || t.includes('full')) && 
+                           div.innerText.length < 300;
                 });
 
-                // Filter out parent containers by picking the smallest ones
-                // This prevents us from scraping the whole page as one class
-                const leafRows = classRows.filter(r => r.innerText.length < 400);
-
-                leafRows.forEach(row => {
+                classRows.forEach(row => {
                     const text = row.innerText; 
                     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-                    // 1. Find Time Line Index
-                    const timeIndex = lines.findIndex(l => /\b\d{1,2}:\d{2}\s*(?:AM|PM)?/i.test(l));
-                    if (timeIndex === -1) return;
+                    // 1. FIND TIME
+                    const timeMatch = lines.find(l => /\b\d{1,2}:\d{2}\s*(?:AM|PM)?/i.test(l));
+                    const start_time = timeMatch ? timeMatch.match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)?/i)[0] : '00:00';
 
-                    const start_time = lines[timeIndex].match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)?/i)[0];
+                    // 2. FIND LOCATION (Angel, etc.)
+                    // We check if any line matches known locations.
+                    const knownLocations = ['Angel', 'Shoreditch', 'Chelsea', 'Victoria', 'Kensington'];
+                    let location = lines.find(l => knownLocations.some(loc => l.includes(loc)));
+                    if (!location) location = "BST Lagree"; // Default
 
-                    // 2. Positional Extraction (Based on your screenshot)
-                    // Time -> Duration -> Title -> Instructor -> Room -> Location
-                    
-                    let class_name = "Lagree Class";
+                    // 3. FIND TITLE
+                    // Must NOT be time, NOT be location, NOT be duration ("min"), NOT be button
+                    let class_name = lines.find(l => 
+                        !l.includes(start_time) && 
+                        l !== location &&
+                        !l.toLowerCase().includes('min') && 
+                        !l.toLowerCase().includes('reserve') && 
+                        !l.toLowerCase().includes('waitlist') && 
+                        !l.toLowerCase().includes('full') &&
+                        !l.toLowerCase().includes('book') &&
+                        l.length > 3
+                    );
+                    if (!class_name) class_name = "Lagree Class";
+
+                    // 4. FIND INSTRUCTOR
+                    // It is the line that is NOT Title, NOT Time, NOT Location
+                    const potentialInstructors = lines.filter(l => 
+                        l !== class_name &&
+                        l !== location &&
+                        !l.includes(start_time) &&
+                        !l.toLowerCase().includes('min') &&
+                        !l.toLowerCase().includes('reserve') &&
+                        !l.toLowerCase().includes('waitlist') &&
+                        l.length > 2
+                    );
+
                     let instructor = "Staff";
-                    let location = "BST Lagree";
-
-                    // We look for the line AFTER the duration "45 min."
-                    const durationIndex = lines.findIndex((l, i) => i > timeIndex && l.includes('min.'));
+                    if (potentialInstructors.length > 0) instructor = potentialInstructors[0];
                     
-                    if (durationIndex > -1 && lines[durationIndex + 1]) {
-                        class_name = lines[durationIndex + 1]; // Title is after duration
-                        
-                        if (lines[durationIndex + 2]) {
-                            instructor = lines[durationIndex + 2]; // Instructor is after Title
-                        }
-                        
-                        // Try to find location (Angel/Shoreditch)
-                        // It is usually near the bottom, or 2 lines after instructor
-                        if (lines[durationIndex + 4]) {
-                             const potentialLoc = lines[durationIndex + 4];
-                             if (potentialLoc === 'Angel' || potentialLoc === 'Shoreditch' || potentialLoc === 'Chelsea') {
-                                 location = potentialLoc;
-                             }
-                        }
-                    }
-
-                    // Cleanup
+                    instructor = instructor.replace(/^with\s+/i, '');
+                    // If it accidentally grabbed "Angel Classroom", clean it up
                     if (instructor.includes('Classroom') || instructor.includes('Studio')) instructor = "Staff";
 
                     const status = text.toUpperCase().includes('WAITLIST') ? 'Waitlist' : 'Open';
@@ -103,10 +105,10 @@ export default async function scrapeBSTLagree(browser, config) {
                     results.push({
                         gym: 'BST Lagree',
                         raw_date: null, 
-                        start_time,
-                        class_name,
-                        instructor,
-                        location,
+                        start_time: start_time,
+                        class_name: class_name,
+                        instructor: instructor,
+                        location: location,
                         status,
                         link: null 
                     });
