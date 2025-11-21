@@ -1,74 +1,45 @@
 import puppeteer from 'puppeteer';
 
-async function scrapePsycle(browser, config) {
+export default async function scrapePsycle(browser, config) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1400, height: 900 });
 
   let masterList = [];
   const urls = config.locations || [config.url];
 
-  // Helper to make "shoreditch" look like "Shoreditch"
-  const formatLocation = (url) => {
-      try {
-          const slug = url.split('/pages/')[1].replace('-timetable', '').replace('-', ' ');
-          return slug.charAt(0).toUpperCase() + slug.slice(1);
-      } catch (e) { return 'Psycle Studio'; }
-  };
-
   for (const url of urls) {
-      const locationName = formatLocation(url);
-      console.log(`[Psycle] -----------------------------------`);
-      console.log(`[Psycle] Navigating to: ${locationName} (${url})`);
+      console.log(`[Psycle] Navigating to: ${url}`);
       
       try {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        // Close Cookie Banner
         try {
             const buttons = await page.$$('button, a');
             for (const b of buttons) {
                 const t = await page.evaluate(el => el.innerText.toLowerCase(), b);
-                if (t.includes('accept') || t.includes('agree') || t.includes('close')) {
-                    await b.click();
-                    await new Promise(r => setTimeout(r, 1000));
-                }
+                if (t.includes('accept') || t.includes('close')) await b.click();
             }
         } catch(e) {}
 
-        // Wait for content
         try {
             await page.waitForFunction(
                 () => document.body.innerText.includes('FILTER') || document.body.innerText.match(/\d{1,2}:\d{2}/),
                 { timeout: 10000 }
             );
-        } catch(e) {
-            console.log(`[Psycle] No schedule found for ${locationName} - skipping.`);
-            continue;
-        }
+        } catch(e) { continue; }
 
-        // --- CHANGE THIS NUMBER TO SCRAPE MORE DAYS ---
-        const daysToScrape = 21; 
-        // ---------------------------------------------
-
-        for (let i = 0; i < daysToScrape; i++) {
-            
-            // Get Date
+        for (let i = 0; i < 5; i++) {
             const dateText = await page.evaluate(() => {
-                const active = document.querySelector('.slick-current') || 
-                               document.querySelector('.is-active') ||
-                               document.querySelector('.date-header.active'); 
+                const active = document.querySelector('.slick-current') || document.querySelector('.is-active'); 
                 return active ? active.innerText.replace(/\n/g, ' ') : null;
             });
             
             const currentDateLabel = dateText || `Day ${i+1}`;
-            console.log(`[Psycle] ${locationName} - Day ${i+1}: ${currentDateLabel}`);
+            console.log(`[Psycle] Scraping ${currentDateLabel}...`);
 
-            // Scrape Classes
-            const dailyClasses = await page.evaluate((dateLabel, locName) => {
+            const dailyClasses = await page.evaluate((dateLabel) => {
                 const results = [];
                 const allDivs = Array.from(document.querySelectorAll('div'));
-                
-                // Find rows with Time + Dash
                 const classRows = allDivs.filter(div => {
                     const t = div.innerText;
                     return /\b\d{1,2}:\d{2}\b/.test(t) && t.includes('-') && t.length < 200 && !t.includes('FILTER');
@@ -77,7 +48,6 @@ async function scrapePsycle(browser, config) {
                 classRows.forEach(row => {
                     const text = row.innerText; 
                     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
                     const headerLine = lines[0];
                     const timeMatch = headerLine.match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)?\b/i);
                     
@@ -91,6 +61,11 @@ async function scrapePsycle(browser, config) {
                             instructor = details.includes('-') ? details.split('-')[0].trim() : details;
                         }
 
+                        // Try to find a specific link button
+                        let link = null;
+                        const btn = row.querySelector('a');
+                        if (btn && btn.href) link = btn.href;
+
                         const isWaitlist = text.toLowerCase().includes('waitlist') || text.toLowerCase().includes('full');
 
                         if (title.length > 2) {
@@ -100,14 +75,14 @@ async function scrapePsycle(browser, config) {
                                 start_time: startTime,
                                 class_name: title,
                                 instructor: instructor,
-                                location: locName, // Uses the pretty name now
-                                status: isWaitlist ? 'Waitlist' : 'Open'
+                                location: 'See URL', 
+                                status: isWaitlist ? 'Waitlist' : 'Open',
+                                link: link // <--- Specific Link
                             });
                         }
                     }
                 });
                 
-                // Deduplicate inside the day
                 const unique = [];
                 const seen = new Set();
                 results.forEach(r => {
@@ -119,11 +94,15 @@ async function scrapePsycle(browser, config) {
                 });
                 return unique;
 
-            }, currentDateLabel, locationName);
+            }, currentDateLabel);
+
+            // Fill fallback links if specific one wasn't found
+            dailyClasses.forEach(c => {
+                if (!c.link) c.link = url; // Use the location URL as fallback
+            });
 
             masterList = masterList.concat(dailyClasses);
 
-            // Click Next
             const clicked = await page.evaluate(() => {
                 const active = document.querySelector('.slick-current') || document.querySelector('.is-active');
                 if (active && active.nextElementSibling) {
@@ -136,32 +115,33 @@ async function scrapePsycle(browser, config) {
                 return false;
             });
 
-            if (!clicked) {
-                console.log(`[Psycle] End of schedule for ${locationName}.`);
-                break;
-            }
-            await new Promise(r => setTimeout(r, 1000));
+            if (!clicked) break;
+            await new Promise(r => setTimeout(r, 1500));
         }
-      } catch(err) {
-          console.log(`[Psycle] Error extracting ${url}: ${err.message}`);
-      }
+      } catch(err) { console.log(`[Psycle] Error: ${err.message}`); }
   }
 
   await page.close();
   
-  // Global Deduplication
   const finalUnique = [];
   const finalSeen = new Set();
   masterList.forEach(c => {
-      const key = `${c.location}-${c.raw_date}-${c.start_time}-${c.class_name}`;
+      // Fix location name based on URL
+      let locName = 'Psycle Studio';
+      if(c.link && c.link.includes('bank')) locName = 'Bank';
+      if(c.link && c.link.includes('oxford')) locName = 'Oxford Circus';
+      if(c.link && c.link.includes('shoreditch')) locName = 'Shoreditch';
+      if(c.link && c.link.includes('notting')) locName = 'Notting Hill';
+      if(c.link && c.link.includes('victoria')) locName = 'Victoria';
+      c.location = locName;
+
+      const key = `${c.raw_date}-${c.start_time}-${c.class_name}-${c.instructor}`;
       if (!finalSeen.has(key)) {
           finalSeen.add(key);
           finalUnique.push(c);
       }
   });
 
-  console.log(`[Psycle] Success! Scraped ${urls.length} locations. Total Clean Count: ${finalUnique.length}`);
+  console.log(`[Psycle] Success! Total Clean Count: ${finalUnique.length}`);
   return finalUnique;
 }
-
-export default scrapePsycle;

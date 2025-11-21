@@ -19,30 +19,24 @@ export async function saveToSupabase(classes) {
     console.log(`[Supabase] Uploading ${classes.length} classes...`);
 
     const formattedData = classes.map(c => {
-        // Create unique ID
         const uniqueId = `${c.gym}-${c.raw_date}-${c.start_time}-${c.location}`
             .toLowerCase()
             .replace(/[^a-z0-9]/g, '-');
 
         return {
             class_uid: uniqueId, 
-            
-            // MAPPING: Scraper Data -> Your Database Columns
-            gym_slug: c.gym,        // You call it 'gym_slug'
+            gym_slug: c.gym,
             class_name: c.class_name,
-            trainer: c.instructor,  // You call it 'trainer'
+            trainer: c.instructor,
             location: c.location,
             date: c.raw_date,
             time: c.start_time,
-            status: c.status,       // We just added this column
-            
-            // Optional: Leave 'link' or 'slug' null for now, or generate them if needed
-            // link: '...', 
+            status: c.status,
+            link: c.link, // <--- NOW ACTIVE
             created_at: new Date()
         };
     });
 
-    // Upsert data
     const { data, error } = await supabase
         .from('classes') 
         .upsert(formattedData, { onConflict: 'class_uid' });

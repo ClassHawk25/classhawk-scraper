@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer';
 
-async function scrape1Rebel(browser, config) {
+export default async function scrape1Rebel(browser, config) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1400, height: 900 });
 
@@ -9,14 +9,12 @@ async function scrape1Rebel(browser, config) {
   try {
     console.log(`[1Rebel] Starting scrape cycle...`);
 
-    // Loop for the next 7 days
     for (let i = 0; i < 7; i++) {
-        
         const date = new Date();
         date.setDate(date.getDate() + i);
         const dateStr = date.toISOString().split('T')[0]; 
         
-        // We grab ALL locations by default
+        // This URL is perfect for the user to book
         const dailyUrl = `${config.url}?minDate=${dateStr}&maxDate=${dateStr}`;
         
         console.log(`[1Rebel] Loading date: ${dateStr}...`);
@@ -27,15 +25,12 @@ async function scrape1Rebel(browser, config) {
                 () => document.body.innerText.includes('BOOK') || document.body.innerText.includes('WAITLIST'),
                 { timeout: 4000 }
             );
-        } catch (e) {
-            continue; 
-        }
+        } catch (e) { continue; }
 
-        const dailyClasses = await page.evaluate((currentDateStr) => {
+        const dailyClasses = await page.evaluate((currentDateStr, bookingLink) => {
             const results = [];
             const allElements = Array.from(document.querySelectorAll('*'));
             
-            // Find elements that act as "Book" buttons
             const actionElements = allElements.filter(el => {
                 if (el.children.length > 1) return false; 
                 const t = el.innerText ? el.innerText.toUpperCase() : '';
@@ -61,54 +56,44 @@ async function scrape1Rebel(browser, config) {
                     const rawText = row.innerText;
                     const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
+                    const knownLocations = ['ST MARY AXE', 'BROADGATE', 'VICTORIA', 'ANGEL', 'SOUTH BANK', 'BAYSWATER', 'HAMMERSMITH', 'KENSINGTON', 'OXFORD CIRCUS', 'RIG', 'HIGH STREET KENSINGTON', 'ST JOHN\'S WOOD', 'HOLBORN'];
+                    
+                    let location = lines.find(l => knownLocations.some(loc => l.toUpperCase().includes(loc)));
+                    if (!location) location = "1Rebel London";
+
+                    const potentialTitles = lines.filter(l => !l.includes(':') && l !== location && !l.toUpperCase().includes('BOOK') && !l.toUpperCase().includes('WAITLIST') && !l.toUpperCase().includes('STANDBY') && l.length > 2);
+
                     let title = "Unknown Class";
-                    const knownLocations = ['ST MARY AXE', 'BROADGATE', 'VICTORIA', 'ANGEL', 'SOUTH BANK', 'BAYSWATER', 'HAMMERSMITH', 'KENSINGTON', 'OXFORD CIRCUS', 'RIG', 'HIGH STREET KENSINGTON'];
-                    
-                    const locLine = lines.find(l => knownLocations.some(loc => l.toUpperCase().includes(loc)));
-                    
-                    // --- DATA CLEANING SECTION ---
-                    const potentialTitles = lines.filter(l => 
-                        !l.includes(':') && 
-                        l !== locLine && 
-                        !l.toUpperCase().includes('BOOK') && 
-                        !l.toUpperCase().includes('WAITLIST') &&
-                        !l.toUpperCase().includes('STANDBY') &&      // Fix: Ignore 'Standby' button text
-                        !l.toUpperCase().includes('SEARCH AGAIN') && // Fix: Ignore Search button
-                        !l.toUpperCase().includes('COOKIES') &&      // Fix: Ignore Cookie banner
-                        !l.toUpperCase().includes('RIGHTS RESERVED') && 
-                        l.length > 2
-                    );
-
                     if (potentialTitles.length > 0) title = potentialTitles[0];
-                    let trainer = potentialTitles.length > 1 ? potentialTitles[potentialTitles.length - 1] : "Staff";
+                    
+                    let trainer = "Staff";
+                    if (potentialTitles.length > 1) trainer = potentialTitles[potentialTitles.length - 1];
 
-                    // Final Check: If the title is still garbage, skip it
                     if (title.includes('WEBSITE') || title.includes('COOKIE')) return;
 
                     results.push({
                         gym: '1Rebel',
-                        date_string: currentDateStr,
+                        raw_date: currentDateStr,
                         start_time: timeFound,
                         class_name: title,
-                        location: locLine || 'London',
+                        location: location,
                         instructor: trainer,
-                        status: rawText.toUpperCase().includes('WAITLIST') || rawText.toUpperCase().includes('STANDBY') ? 'Waitlist' : 'Open'
+                        status: rawText.toUpperCase().includes('WAITLIST') ? 'Waitlist' : 'Open',
+                        link: bookingLink // <--- Added Link
                     });
                 }
             });
-
             return results;
-        }, dateStr);
+        }, dateStr, dailyUrl);
 
         allClasses = allClasses.concat(dailyClasses);
         await new Promise(r => setTimeout(r, 200));
     }
 
-    // Deduplicate
     const uniqueClasses = [];
     const seen = new Set();
     allClasses.forEach(c => {
-        const key = `${c.date_string}-${c.start_time}-${c.class_name}-${c.location}`;
+        const key = `${c.raw_date}-${c.start_time}-${c.class_name}-${c.location}`;
         if (!seen.has(key)) {
             seen.add(key);
             uniqueClasses.push(c);
@@ -125,5 +110,3 @@ async function scrape1Rebel(browser, config) {
     await page.close();
   }
 }
-
-export default scrape1Rebel;
