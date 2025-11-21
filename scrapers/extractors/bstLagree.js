@@ -42,59 +42,74 @@ export default async function scrapeBSTLagree(browser, config) {
 
             const dailyClasses = await targetFrame.evaluate(() => {
                 const results = [];
-                const allElements = Array.from(document.querySelectorAll('button, a, div[role="button"], span'));
-                const actionBtns = allElements.filter(el => {
-                    if (el.children.length > 1) return false; 
-                    const t = el.innerText.toUpperCase();
-                    return (t.includes('RESERVE') || t.includes('WAITLIST') || t.includes('FULL') || t.includes('BOOK'));
+                // Use 'article' or 'li' as row containers based on typical Mariana layout
+                // Falling back to divs that look like rows
+                const allDivs = Array.from(document.querySelectorAll('div'));
+                
+                const classRows = allDivs.filter(div => {
+                    const t = div.innerText;
+                    // Strict check: Must have Time AND Duration AND Button
+                    return /\b\d{1,2}:\d{2}\b/.test(t) && 
+                           t.includes('min.') && 
+                           (t.toUpperCase().includes('RESERVE') || t.toUpperCase().includes('WAITLIST'));
                 });
 
-                actionBtns.forEach(btn => {
-                    let row = btn.parentElement;
-                    let timeFound = null;
-                    let attempts = 0;
-                    const timeRegex = /\b\d{1,2}:\d{2}\b/;
+                // Filter out parent containers by picking the smallest ones
+                // This prevents us from scraping the whole page as one class
+                const leafRows = classRows.filter(r => r.innerText.length < 400);
 
-                    while (row && attempts < 8) {
-                        if (timeRegex.test(row.innerText)) {
-                            timeFound = row.innerText.match(timeRegex)[0];
-                            break;
-                        }
-                        row = row.parentElement;
-                        attempts++;
-                    }
+                leafRows.forEach(row => {
+                    const text = row.innerText; 
+                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-                    if (row && timeFound) {
-                        const text = row.innerText;
-                        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    // 1. Find Time Line Index
+                    const timeIndex = lines.findIndex(l => /\b\d{1,2}:\d{2}\s*(?:AM|PM)?/i.test(l));
+                    if (timeIndex === -1) return;
+
+                    const start_time = lines[timeIndex].match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)?/i)[0];
+
+                    // 2. Positional Extraction (Based on your screenshot)
+                    // Time -> Duration -> Title -> Instructor -> Room -> Location
+                    
+                    let class_name = "Lagree Class";
+                    let instructor = "Staff";
+                    let location = "BST Lagree";
+
+                    // We look for the line AFTER the duration "45 min."
+                    const durationIndex = lines.findIndex((l, i) => i > timeIndex && l.includes('min.'));
+                    
+                    if (durationIndex > -1 && lines[durationIndex + 1]) {
+                        class_name = lines[durationIndex + 1]; // Title is after duration
                         
-                        const timeMatch = lines.find(l => /\b\d{1,2}:\d{2}\s*(?:AM|PM)?/i.test(l));
-                        const start_time = timeMatch ? timeMatch.match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)?/i)[0] : timeFound;
-
-                        let class_name = lines.find(l => 
-                            !l.includes(start_time) && !l.toLowerCase().includes('reserve') && !l.toLowerCase().includes('waitlist') && !l.toLowerCase().includes('full') && !l.toLowerCase().includes('book') && !l.toLowerCase().includes('min') && !l.toLowerCase().includes('only') && l.length > 3
-                        );
-                        if (!class_name) class_name = "Lagree Class";
-
-                        const potentialInstructors = lines.filter(l => l !== class_name && !l.includes(start_time) && !l.toLowerCase().includes('min') && !l.toLowerCase().includes('reserve') && !l.toLowerCase().includes('waitlist') && l.length > 2);
-                        let instructor = "Staff";
-                        if (potentialInstructors.length > 0) instructor = potentialInstructors[0];
-                        instructor = instructor.replace(/^with\s+/i, '');
-                        if (instructor.includes('Angel') || instructor.includes('Classroom') || instructor.includes('Studio')) instructor = "Staff";
-
-                        const status = text.toUpperCase().includes('WAITLIST') ? 'Waitlist' : 'Open';
-
-                        results.push({
-                            gym: 'BST Lagree',
-                            raw_date: null, 
-                            start_time: start_time,
-                            class_name: class_name,
-                            instructor: instructor,
-                            location: 'BST Lagree',
-                            status,
-                            link: null // Filled in Node
-                        });
+                        if (lines[durationIndex + 2]) {
+                            instructor = lines[durationIndex + 2]; // Instructor is after Title
+                        }
+                        
+                        // Try to find location (Angel/Shoreditch)
+                        // It is usually near the bottom, or 2 lines after instructor
+                        if (lines[durationIndex + 4]) {
+                             const potentialLoc = lines[durationIndex + 4];
+                             if (potentialLoc === 'Angel' || potentialLoc === 'Shoreditch' || potentialLoc === 'Chelsea') {
+                                 location = potentialLoc;
+                             }
+                        }
                     }
+
+                    // Cleanup
+                    if (instructor.includes('Classroom') || instructor.includes('Studio')) instructor = "Staff";
+
+                    const status = text.toUpperCase().includes('WAITLIST') ? 'Waitlist' : 'Open';
+
+                    results.push({
+                        gym: 'BST Lagree',
+                        raw_date: null, 
+                        start_time,
+                        class_name,
+                        instructor,
+                        location,
+                        status,
+                        link: null 
+                    });
                 });
                 return results;
             });
@@ -103,7 +118,7 @@ export default async function scrapeBSTLagree(browser, config) {
             const processedClasses = dailyClasses.map(c => ({
                 ...c,
                 raw_date: dateForThisLoop,
-                link: config.url // <--- Main booking page link
+                link: config.url 
             }));
             masterList = masterList.concat(processedClasses);
         }

@@ -16,8 +16,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 export async function saveToSupabase(classes) {
     if (classes.length === 0) return;
 
-    console.log(`[Supabase] Uploading ${classes.length} classes...`);
+    console.log(`[Supabase] Processing ${classes.length} classes...`);
 
+    // 1. Format the data
     const formattedData = classes.map(c => {
         const uniqueId = `${c.gym}-${c.raw_date}-${c.start_time}-${c.location}`
             .toLowerCase()
@@ -32,14 +33,25 @@ export async function saveToSupabase(classes) {
             date: c.raw_date,
             time: c.start_time,
             status: c.status,
-            link: c.link, // <--- NOW ACTIVE
+            link: c.link,
             created_at: new Date()
         };
     });
 
+    // 2. THE FIX: Deduplicate based on class_uid
+    // This removes duplicates BEFORE sending to Supabase
+    const uniqueDataMap = new Map();
+    formattedData.forEach(item => {
+        uniqueDataMap.set(item.class_uid, item);
+    });
+    const uniqueData = Array.from(uniqueDataMap.values());
+
+    console.log(`[Supabase] Removed ${formattedData.length - uniqueData.length} duplicates. Uploading ${uniqueData.length} unique classes...`);
+
+    // 3. Upsert clean data
     const { data, error } = await supabase
         .from('classes') 
-        .upsert(formattedData, { onConflict: 'class_uid' });
+        .upsert(uniqueData, { onConflict: 'class_uid' });
 
     if (error) {
         console.error('[Supabase] Error uploading:', error.message);
