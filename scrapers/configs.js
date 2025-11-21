@@ -27,5 +27,13 @@ export default {
   bstlagree: {
     url: 'https://bstlagree.com/book/',
     studioName: 'BST Lagree'
+  },
+  // Virgin Active (NEW)
+  virginactive: {
+    locations: [
+      'https://www.virginactive.co.uk/clubs/crouch-end/timetable/'
+      // Add other club URLs here if needed
+    ],
+    studioName: 'Virgin Active'
   }
 };

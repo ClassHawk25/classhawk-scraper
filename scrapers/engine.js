@@ -5,6 +5,7 @@ import scrapePsycle from './extractors/psycle.js';
 import scrapeThreeTribes from './extractors/threeTribes.js';
 import scrapeBSTLagree from './extractors/bstLagree.js'; // <--- IMPORT ADDED
 import { saveToSupabase } from '../utils/supabase.js';
+import scrapeVirginActive from './extractors/virginActive.js';
 
 async function startScraper(gymName) {
   console.log(`Starting Scraper Engine for: ${gymName || 'ALL'}...`);
@@ -42,6 +43,12 @@ async function startScraper(gymName) {
     if (gymName === 'bstlagree' || !gymName) {
         console.log('--- Running BST Lagree ---');
         const data = await scrapeBSTLagree(browser, configs.bstlagree);
+        results = results.concat(data);
+    }
+    // 5. Run Virgin Active (NEW)
+    if (gymName === 'virginactive' || !gymName) {
+        console.log('--- Running Virgin Active ---');
+        const data = await scrapeVirginActive(browser, configs.virginactive);
         results = results.concat(data);
     }
 

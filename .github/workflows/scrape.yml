@@ -2,7 +2,8 @@ name: ClassHawk Scraper Bot
 
 on:
   schedule:
-    - cron: '*/20 * * * *' # Runs every 20 minutes
+    # Runs every 30 minutes, but only between 06:00 and 23:00 UTC
+  - cron: '*/30 6-23 * * *'
   workflow_dispatch: # Adds a "Run Now" button
 
 jobs:
