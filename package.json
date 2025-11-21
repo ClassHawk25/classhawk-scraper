@@ -1,0 +1,22 @@
+{
+  "name": "classhawk-scraper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "scrape": "node run.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.84.0",
+    "dotenv": "^16.6.1",
+    "puppeteer": "^24.31.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "supabase": "^2.58.5",
+    "undetected-chromedriver": "^0.0.1-security"
+  }
+}
