@@ -35,5 +35,10 @@ export default {
       // Add other club URLs here if needed
     ],
     studioName: 'Virgin Active'
+  },
+  // Shiva Shakti (BSport)
+  shivashakti: {
+    url: 'https://shivashaktistudios.com/schedule/',
+    studioName: 'Shiva Shakti'
   }
 };

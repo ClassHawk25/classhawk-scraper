@@ -3,16 +3,30 @@ import configs from './configs.js';
 import scrape1Rebel from './extractors/1rebel.js';
 import scrapePsycle from './extractors/psycle.js';
 import scrapeThreeTribes from './extractors/threeTribes.js';
-import scrapeBSTLagree from './extractors/bstLagree.js'; // <--- IMPORT ADDED
+import scrapeBSTLagree from './extractors/bstLagree.js';
+import scrapeShivaShakti from './extractors/shivaShakti.js';
+import scrapeVirginActive from './extractors/virginActive.js'; // <--- New Import
 import { saveToSupabase } from '../utils/supabase.js';
-import scrapeVirginActive from './extractors/virginActive.js';
 
 async function startScraper(gymName) {
   console.log(`Starting Scraper Engine for: ${gymName || 'ALL'}...`);
 
+  // NUCLEAR LAUNCH CONFIGURATION (Needed for Shiva Shakti/BSport)
   const browser = await puppeteer.launch({
-    headless: true, 
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    headless: true, // Keep true for cloud
+    ignoreHTTPSErrors: true, 
+    args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--allow-running-insecure-content',
+        '--disable-blink-features=AutomationControlled',
+        '--ignore-certificate-errors',
+        '--disable-gpu',
+        '--window-size=1920,1080',
+        '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    ]
   });
 
   let results = [];
@@ -39,13 +53,21 @@ async function startScraper(gymName) {
         results = results.concat(data);
     }
 
-    // 4. Run BST Lagree (NEW SECTION)
+    // 4. Run BST Lagree
     if (gymName === 'bstlagree' || !gymName) {
         console.log('--- Running BST Lagree ---');
         const data = await scrapeBSTLagree(browser, configs.bstlagree);
         results = results.concat(data);
     }
-    // 5. Run Virgin Active (NEW)
+
+    // 5. Run Shiva Shakti
+    if (gymName === 'shivashakti' || !gymName) {
+        console.log('--- Running Shiva Shakti ---');
+        const data = await scrapeShivaShakti(browser, configs.shivashakti);
+        results = results.concat(data);
+    }
+
+    // 6. Run Virgin Active (NEW)
     if (gymName === 'virginactive' || !gymName) {
         console.log('--- Running Virgin Active ---');
         const data = await scrapeVirginActive(browser, configs.virginactive);
