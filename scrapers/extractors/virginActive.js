@@ -28,33 +28,29 @@ export default async function scrapeVirginActive(browser, config) {
       try {
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        // 1. Cookie Banner Handling
+        // Cookie Banner
         try {
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise(r => setTimeout(r, 3000));
             const cookieBtn = await page.$('#onetrust-accept-btn-handler');
             if (cookieBtn) {
                 await cookieBtn.click();
-                console.log('[Virgin Active] Cookie banner clicked.');
                 await new Promise(r => setTimeout(r, 1000));
             }
         } catch(e) {}
 
-        // 2. CRITICAL FIX: Wait for the Date Buttons to actually exist
+        // Wait for Calendar Buttons
         console.log('[Virgin Active] Waiting for calendar buttons...');
         try {
-            // We wait up to 15 seconds for the buttons to appear in the DOM
             await page.waitForSelector('button[class*="date-filter-item"]', { timeout: 15000 });
         } catch(e) {
-            console.log('[Virgin Active] Calendar buttons never appeared. Page might be blank.');
+            console.log('[Virgin Active] Calendar buttons never appeared.');
             continue;
         }
 
-        // 3. Loop for 7 Days
+        // Loop for 7 Days
         for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
             
-            // Click the Date Button
             const clicked = await page.evaluate((idx) => {
-                // Use a fuzzy selector to be safer
                 const buttons = document.querySelectorAll('button[class*="date-filter-item"]');
                 if (buttons[idx]) {
                     buttons[idx].click();
@@ -63,18 +59,11 @@ export default async function scrapeVirginActive(browser, config) {
                 return false;
             }, dayIdx);
 
-            if (!clicked) {
-                console.log(`[Virgin Active] Day ${dayIdx+1} button not found. Stopping.`);
-                break;
-            }
+            if (!clicked) break;
+            await new Promise(r => setTimeout(r, 2500));
 
-            // Wait for accordion list to refresh
-            await new Promise(r => setTimeout(r, 2000));
-
-            // 4. Scrape the classes
             const dailyClasses = await page.evaluate((locName, classLink) => {
                 const results = [];
-                // Virgin uses 'dt' tags for rows usually, or divs with 'accordion' classes
                 const rows = Array.from(document.querySelectorAll('.va_accordion-section, .class-timetable-row, dt[role="heading"]'));
 
                 rows.forEach(row => {
@@ -86,6 +75,12 @@ export default async function scrapeVirginActive(browser, config) {
                     // Title
                     const titleEl = row.querySelector('[class*="title"]');
                     let class_name = titleEl ? titleEl.innerText.trim() : 'Virgin Class';
+                    
+                    // --- FIX: Remove Time from Title if present ---
+                    // Example: "09:00 - BODYPUMP" -> "BODYPUMP"
+                    if (class_name.match(/^\d{2}:\d{2}/)) {
+                        class_name = class_name.replace(/^\d{2}:\d{2}\s*-\s*/, '').trim();
+                    }
 
                     // Instructor
                     const trainerEl = row.querySelector('[class*="trainer"]');
@@ -94,17 +89,13 @@ export default async function scrapeVirginActive(browser, config) {
                     // Status / Link
                     const btnEl = row.querySelector('a[class*="cta"], a.btn');
                     let status = 'Open';
-                    let link = classLink; // Default to timetable URL
+                    let link = classLink; 
 
                     if (btnEl) {
                         const btnText = btnEl.innerText.toUpperCase();
                         if (btnText.includes('FULL')) status = 'Full';
                         if (btnText.includes('WAITLIST')) status = 'Waitlist';
-                        
-                        // Virgin often puts the real booking link in the href
-                        if (btnEl.href && !btnEl.href.includes('#')) {
-                            link = btnEl.href;
-                        }
+                        if (btnEl.href && !btnEl.href.includes('#')) link = btnEl.href;
                     }
 
                     results.push({
@@ -138,17 +129,16 @@ export default async function scrapeVirginActive(browser, config) {
 
   await page.close();
 
-  // Deduplicate
-  const uniqueClasses = [];
+  const finalUnique = [];
   const seen = new Set();
   masterList.forEach(c => {
       const key = `${c.location}-${c.raw_date}-${c.start_time}-${c.class_name}`;
       if (!seen.has(key)) {
           seen.add(key);
-          uniqueClasses.push(c);
+          finalUnique.push(c);
       }
   });
 
-  console.log(`[Virgin Active] Success! Total Clean Count: ${uniqueClasses.length}`);
-  return uniqueClasses;
+  console.log(`[Virgin Active] Success! Total Clean Count: ${finalUnique.length}`);
+  return finalUnique;
 }

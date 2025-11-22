@@ -1,78 +1,115 @@
-import puppeteer from 'puppeteer';
+import axios from 'axios';
+import { format, addDays } from 'date-fns';
 
 export default async function scrapeShivaShakti(browser, config) {
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1400, height: 900 });
-
-  console.log(`[Shiva Shakti] Navigating to API...`);
+  console.log(`[Shiva Shakti] Initializing API Scraper...`);
   
+  const COMPANY_ID = 1433;
+  let masterList = [];
+
   try {
+    // 1. Calculate Dates
     const today = new Date();
-    const nextMonth = new Date();
-    nextMonth.setDate(nextMonth.getDate() + 14);
-    
-    const todayStr = today.toISOString().split('T')[0];
-    const endDateStr = nextMonth.toISOString().split('T')[0];
+    const startDateStr = format(today, "yyyy-MM-dd");
+    const endDateStr = format(addDays(today, 14), "yyyy-MM-dd");
 
-    const API_URL = `https://api.bsport.io/api/v1/offer?company=1433&min_date=${todayStr}&max_date=${endDateStr}&limit=100`;
+    // 2. Use the 'book' endpoint which usually has rich data
+    const url = `https://api.production.bsport.io/book/v1/offer/?company=${COMPANY_ID}&min_date=${startDateStr}&max_date=${endDateStr}&limit=100&coaches=&establishments=&activity__in=&levels=&establishment_group__in=&is_available=true&with_tags=true&only_future_strict=false&with_booking_window=true`;
 
-    console.log(`[Shiva Shakti] Target URL: ${API_URL}`);
+    console.log(`[Shiva Shakti] Fetching data from API...`);
 
-    await page.goto(API_URL, { waitUntil: 'networkidle2', timeout: 60000 });
+    // 3. Fetch
+    const response = await axios.get(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0 Safari/537.36",
+        "Accept": "application/json",
+        "Origin": "https://shivashaktistudios.com",
+        "Referer": "https://shivashaktistudios.com/"
+      },
+    });
 
-    const jsonText = await page.evaluate(() => document.body.innerText);
+    const offers = response.data?.results || [];
+    console.log(`[Shiva Shakti] ⚡️ API Success! Received ${offers.length} raw classes.`);
 
-    let apiData = null;
-    try {
-        apiData = JSON.parse(jsonText);
-    } catch (e) {
-        console.log('[Shiva Shakti] Failed to parse JSON. Check browser window for errors.');
-        return [];
-    }
+    if (offers.length === 0) return [];
 
-    if (!apiData || !apiData.results) {
-        return [];
-    }
+    // 4. Map with ROBUST Fallbacks
+    const processedClasses = offers.map((cls) => {
+      // --- TIME MAPPING ---
+      const startDateTime = new Date(cls.date_start);
+      const dateStr = format(startDateTime, "yyyy-MM-dd");
+      
+      const hours = startDateTime.getHours().toString().padStart(2, '0');
+      const minutes = startDateTime.getMinutes().toString().padStart(2, '0');
+      const timeStr = `${hours}:${minutes}`;
 
-    console.log(`[Shiva Shakti] ⚡️ Success! Downloaded ${apiData.results.length} classes.`);
+      // --- TITLE MAPPING (The Fix) ---
+      // Check 'activity_name' (from your screenshot) first
+      let title = cls.activity_name || cls.name;
+      
+      // If that failed, check nested objects
+      if (!title && cls.activity && cls.activity.name) title = cls.activity.name;
+      if (!title && cls.meta_activity && cls.meta_activity.name) title = cls.meta_activity.name;
+      
+      // Fallback only if absolutely nothing found
+      if (!title) title = "Yoga Class"; 
 
-    const processedClasses = apiData.results.map(item => {
-        try {
-            const startDateTime = new Date(item.date_start);
-            const dateStr = startDateTime.toISOString().split('T')[0]; 
-            const hours = startDateTime.getHours().toString().padStart(2, '0');
-            const minutes = startDateTime.getMinutes().toString().padStart(2, '0');
-            const timeStr = `${hours}:${minutes}`;
+      // --- LOCATION MAPPING ---
+      let location = "Shakti Studio";
+      if (cls.establishment && cls.establishment.name) location = cls.establishment.name;
 
-            let instructor = "Staff";
-            if (item.coach && item.coach.name) instructor = item.coach.name;
-            
-            let location = "Shakti Studio";
-            if (item.establishment && item.establishment.name) location = item.establishment.name;
+      // --- INSTRUCTOR MAPPING (The Fix) ---
+      let instructor = "Staff";
+      
+      // Check for direct name on coach object
+      if (cls.coach && cls.coach.name) {
+          instructor = cls.coach.name;
+      } 
+      // Check for nested user object
+      else if (cls.coach && cls.coach.user && cls.coach.user.first_name) {
+          instructor = `${cls.coach.user.first_name} ${cls.coach.user.last_name || ''}`.trim();
+      }
+      // Check for override (Substitute teacher)
+      else if (cls.coach_override && cls.coach_override.name) {
+          instructor = cls.coach_override.name;
+      }
+      
+      // Clean up weird formatting like "Vanessa H." -> "Vanessa Hartley" if available
+      // (Not strictly necessary but good practice)
 
-            let status = 'Open';
-            if (item.spots_left === 0) status = 'Waitlist';
-            if (item.booking_status === 'full') status = 'Full';
+      // --- STATUS MAPPING ---
+      let status = 'Open';
+      if (cls.spots_left === 0) status = 'Waitlist';
+      if (cls.booking_status === 'full') status = 'Full';
 
-            return {
-                gym: 'Shiva Shakti',
-                raw_date: dateStr,
-                start_time: timeStr,
-                class_name: item.name || item.activity_name || "Yoga Class",
-                instructor: instructor,
-                location: location,
-                status: status,
-                link: "https://shivashaktistudios.com/schedule/"
-            };
-        } catch(e) { return null; }
-    }).filter(c => c !== null);
+      return {
+        gym: 'Shiva Shakti',
+        raw_date: dateStr,
+        start_time: timeStr,
+        class_name: title,
+        instructor: instructor,
+        location: location,
+        status: status,
+        link: "https://shivashaktistudios.com/schedule/"
+      };
+    });
 
-    return processedClasses;
+    // Deduplicate
+    const uniqueClasses = [];
+    const seen = new Set();
+    processedClasses.forEach(c => {
+        const key = `${c.raw_date}-${c.start_time}-${c.class_name}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueClasses.push(c);
+        }
+    });
+
+    console.log(`[Shiva Shakti] Success! Clean Count: ${uniqueClasses.length}`);
+    return uniqueClasses;
 
   } catch (err) {
-      console.log(`[Shiva Shakti] Error: ${err.message}`);
-      return [];
-  } finally {
-    await page.close();
+    console.error(`[Shiva Shakti] Error: ${err.message}`);
+    return [];
   }
 }
