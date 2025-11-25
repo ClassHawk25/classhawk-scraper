@@ -1,9 +1,11 @@
+// scrapers/configs.js
 export default {
-  // 1Rebel
-  onerebel: {
-    url: 'https://www.1rebel.com/en-gb/reserve',
+  // ✅ FIXED: Changed 'onerebel' to '1rebel' so it matches your command flag
+  '1rebel': {
+    url: 'https://www.1rebel.com/uk/buy/book-a-class', // Updated to the direct booking URL
     studioName: '1Rebel'
   },
+  
   // Psycle
   psycle: {
     locations: [
@@ -15,6 +17,7 @@ export default {
     ],
     studioName: 'Psycle'
   },
+  
   // 3Tribes
   threetribes: {
     locations: [
@@ -23,22 +26,30 @@ export default {
     ],
     studioName: '3Tribes'
   },
-  // BST Lagree (NEW)
+  
+  // BST Lagree
   bstlagree: {
     url: 'https://bstlagree.com/book/',
     studioName: 'BST Lagree'
   },
-  // Virgin Active (NEW)
+  
+  // Virgin Active
   virginactive: {
     locations: [
       'https://www.virginactive.co.uk/clubs/crouch-end/timetable/'
-      // Add other club URLs here if needed
     ],
     studioName: 'Virgin Active'
   },
+  
   // Shiva Shakti (BSport)
   shivashakti: {
     url: 'https://shivashaktistudios.com/schedule/',
     studioName: 'Shiva Shakti'
+  },
+  
+  // Barry's UK (Mariana Tek)
+  barrys: {
+    url: 'https://www.barrys.com/schedule/london-east/?_mt=%2Fschedule', 
+    studioName: "Barry's"
   }
 };

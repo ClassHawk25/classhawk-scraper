@@ -1,3 +1,4 @@
+// scrapers/engine.js
 import puppeteer from 'puppeteer';
 import configs from './configs.js';
 import scrape1Rebel from './extractors/1rebel.js';
@@ -5,87 +6,117 @@ import scrapePsycle from './extractors/psycle.js';
 import scrapeThreeTribes from './extractors/threeTribes.js';
 import scrapeBSTLagree from './extractors/bstLagree.js';
 import scrapeShivaShakti from './extractors/shivaShakti.js';
-import scrapeVirginActive from './extractors/virginActive.js'; // <--- New Import
+import scrapeVirginActive from './extractors/virginActive.js'; 
+import scrapeBarrys from './extractors/barrys.js';
 import { saveToSupabase } from '../utils/supabase.js';
+import { checkAndNotify } from '../utils/notifier.js';
+
+// 🛡️ SAFETY NET: Retry Logic
+// This function tries to run a scraper. If it fails, it waits 2s and tries again.
+async function runScraperSafe(name, scraperFn, browser, config, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      console.log(`--- Running ${name} (Attempt ${i + 1}/${retries + 1}) ---`);
+      const data = await scraperFn(browser, config);
+      
+      if (data && data.length > 0) {
+        console.log(`   ✅ ${name}: Success! Found ${data.length} classes.`);
+        return data;
+      } else {
+        console.log(`   ⚠️ ${name}: Returned 0 classes.`);
+        // If it returned 0, we might want to retry depending on logic, 
+        // but usually 0 means "working but empty". We'll accept it to avoid loops.
+        return [];
+      }
+    } catch (err) {
+      console.error(`   ❌ ${name}: Failed (Attempt ${i + 1}). Error: ${err.message}`);
+      if (i === retries) {
+        console.error(`   💀 ${name}: Giving up after ${retries + 1} attempts.`);
+        return []; // Return empty so engine continues
+      }
+      // Wait 3 seconds before retrying
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  }
+  return [];
+}
 
 async function startScraper(gymName) {
-  console.log(`Starting Scraper Engine for: ${gymName || 'ALL'}...`);
+  console.log(`\n🚀 STARTING ENGINE: ${gymName || 'ALL'}...\n`);
 
-  // NUCLEAR LAUNCH CONFIGURATION (Needed for Shiva Shakti/BSport)
+  const shouldRunAll = !gymName || gymName === 'all';
+
+  // 1. Launch Browser (Optimized Args)
   const browser = await puppeteer.launch({
-    headless: true, // Keep true for cloud
+    headless: true, 
     ignoreHTTPSErrors: true, 
     args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-web-security',
-        '--disable-features=IsolateOrigins,site-per-process',
-        '--allow-running-insecure-content',
-        '--disable-blink-features=AutomationControlled',
-        '--ignore-certificate-errors',
+        '--disable-dev-shm-usage', // Helps in Docker/Cloud
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
         '--disable-gpu',
-        '--window-size=1920,1080',
-        '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        '--window-size=1920,1080'
     ]
   });
 
-  let results = [];
+  let masterList = [];
 
   try {
-    // 1. Run 1Rebel
-    if (gymName === 'onerebel' || !gymName) {
-        console.log('--- Running 1Rebel ---');
-        const data = await scrape1Rebel(browser, configs.onerebel);
-        results = results.concat(data);
+    // 2. Execute Scrapers (Sequentially to save RAM)
+    
+    if (shouldRunAll || gymName === '1rebel') {
+        const data = await runScraperSafe('1Rebel', scrape1Rebel, browser, configs['1rebel']);
+        masterList = masterList.concat(data);
     }
 
-    // 2. Run Psycle
-    if (gymName === 'psycle' || !gymName) {
-        console.log('--- Running Psycle ---');
-        const data = await scrapePsycle(browser, configs.psycle);
-        results = results.concat(data);
+    if (shouldRunAll || gymName === 'psycle') {
+        const data = await runScraperSafe('Psycle', scrapePsycle, browser, configs.psycle);
+        masterList = masterList.concat(data);
     }
 
-    // 3. Run 3Tribes
-    if (gymName === 'threetribes' || !gymName) {
-        console.log('--- Running 3Tribes ---');
-        const data = await scrapeThreeTribes(browser, configs.threetribes);
-        results = results.concat(data);
+    if (shouldRunAll || gymName === 'threetribes') {
+        const data = await runScraperSafe('3Tribes', scrapeThreeTribes, browser, configs.threetribes);
+        masterList = masterList.concat(data);
     }
 
-    // 4. Run BST Lagree
-    if (gymName === 'bstlagree' || !gymName) {
-        console.log('--- Running BST Lagree ---');
-        const data = await scrapeBSTLagree(browser, configs.bstlagree);
-        results = results.concat(data);
+    if (shouldRunAll || gymName === 'bstlagree') {
+        const data = await runScraperSafe('BST Lagree', scrapeBSTLagree, browser, configs.bstlagree);
+        masterList = masterList.concat(data);
     }
 
-    // 5. Run Shiva Shakti
-    if (gymName === 'shivashakti' || !gymName) {
-        console.log('--- Running Shiva Shakti ---');
-        const data = await scrapeShivaShakti(browser, configs.shivashakti);
-        results = results.concat(data);
+    if (shouldRunAll || gymName === 'shivashakti') {
+        const data = await runScraperSafe('Shiva Shakti', scrapeShivaShakti, browser, configs.shivashakti);
+        masterList = masterList.concat(data);
     }
 
-    // 6. Run Virgin Active (NEW)
-    if (gymName === 'virginactive' || !gymName) {
-        console.log('--- Running Virgin Active ---');
-        const data = await scrapeVirginActive(browser, configs.virginactive);
-        results = results.concat(data);
+    if (shouldRunAll || gymName === 'virginactive') {
+        const data = await runScraperSafe('Virgin Active', scrapeVirginActive, browser, configs.virginactive);
+        masterList = masterList.concat(data);
     }
 
-    console.log('-------------------------');
-    console.log(`SCRAPE COMPLETE. Total Classes Found: ${results.length}`);
+    if (shouldRunAll || gymName === 'barrys') {
+        const data = await runScraperSafe('Barry\'s', scrapeBarrys, browser, configs.barrys);
+        masterList = masterList.concat(data);
+    }
 
-    if (results.length > 0) {
-        await saveToSupabase(results);
+    console.log('\n-------------------------');
+    console.log(`🏁 ENGINE COMPLETE. Total Classes: ${masterList.length}`);
+
+    // 3. Save & Notify
+    if (masterList.length > 0) {
+        await saveToSupabase(masterList);
+        await checkAndNotify(masterList); // The "Waitlist Sniper"
     } else {
         console.log('[Engine] No classes found to save.');
     }
 
   } catch (error) {
-    console.error('[Engine] Critical Error:', error);
+    console.error('[Engine] Critical System Error:', error);
   } finally {
+    console.log('[Engine] Shutting down browser...');
     await browser.close();
   }
 }

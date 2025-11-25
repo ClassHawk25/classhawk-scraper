@@ -1,135 +1,176 @@
+// scrapers/extractors/1rebel.js
 import puppeteer from 'puppeteer';
 
 export default async function scrape1Rebel(browser, config) {
+  const targetUrl = 'https://www.1rebel.com/en-gb/reserve';
+  
   const page = await browser.newPage();
-  await page.setViewport({ width: 1400, height: 900 });
+  await page.setViewport({ width: 1600, height: 1200 });
 
   let allClasses = [];
 
   try {
-    console.log(`[1Rebel] Starting scrape cycle...`);
+    console.log(`[1Rebel] 🚀 Starting Scrape (Tunnel Vision Mode)...`);
 
+    // 1. LOAD PAGE
+    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+    // 2. COOKIEBOT
+    console.log("   🍪 Handling Cookiebot...");
+    try {
+        const cookieBtn = await page.waitForSelector('#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll', { timeout: 5000 });
+        if (cookieBtn) await cookieBtn.click();
+    } catch(e) {
+        // Nuke fallback
+        await page.evaluate(() => {
+            const b = document.getElementById('CybotCookiebotDialog');
+            if(b) b.remove();
+        });
+    }
+
+    // 3. REGION CHECK
+    try {
+        const text = await page.evaluate(() => document.body.innerText);
+        if (text.includes('CHOOSE LOCATION')) {
+            await page.evaluate(() => {
+                const links = Array.from(document.querySelectorAll('a'));
+                const uk = links.find(l => l.innerText.includes('VISIT SITE') && l.href.includes('en-gb'));
+                if (uk) uk.click();
+            });
+            await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+        }
+    } catch(e) {}
+
+    // --- DATE LOOP ---
     for (let i = 0; i < 7; i++) {
         const date = new Date();
         date.setDate(date.getDate() + i);
         const dateStr = date.toISOString().split('T')[0]; 
-        const dailyUrl = `${config.url}?minDate=${dateStr}&maxDate=${dateStr}`;
+        
+        const dailyUrl = `https://www.1rebel.com/en-gb/reserve?minDate=${dateStr}&maxDate=${dateStr}`;
         
         console.log(`[1Rebel] Loading date: ${dateStr}...`);
-        await page.goto(dailyUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.goto(dailyUrl, { waitUntil: 'networkidle2' });
 
+        // WAIT FOR DATA
         try {
             await page.waitForFunction(
-                () => document.body.innerText.includes('BOOK') || document.body.innerText.includes('WAITLIST'),
-                { timeout: 4000 }
+                () => document.body.innerText.includes('BOOK NOW') || document.body.innerText.includes('WAITLIST'),
+                { timeout: 8000 }
             );
-        } catch (e) { continue; }
+        } catch(e) {
+            console.log(`   ⚠️ No classes found for ${dateStr}.`);
+            continue;
+        }
 
-        const dailyClasses = await page.evaluate((currentDateStr, bookingLink) => {
+        // 4. EXTRACT DATA (With Depth Limiter)
+        const dailyClasses = await page.evaluate((currentDateStr) => {
             const results = [];
-            const allElements = Array.from(document.querySelectorAll('*'));
             
-            const actionElements = allElements.filter(el => {
-                if (el.children.length > 1) return false; 
-                const t = el.innerText ? el.innerText.toUpperCase() : '';
+            // Find valid buttons
+            const buttons = Array.from(document.querySelectorAll('a, button, div[role="button"]'));
+            const bookButtons = buttons.filter(b => {
+                // Must be visible
+                if (b.offsetParent === null) return false;
+                const t = b.innerText.toUpperCase();
                 return t.includes('BOOK') || t.includes('WAITLIST') || t.includes('STANDBY');
             });
 
-            actionElements.forEach(el => {
-                let row = el.parentElement;
+            bookButtons.forEach(btn => {
+                // --- THE FIX IS HERE ---
+                // Instead of jumping to the closest 'tr', we walk up cautiously.
+                // We check if the current container HAS a time. If so, we stop.
+                
+                let container = btn.parentElement;
                 let timeFound = null;
-                let attempts = 0;
-                const timeRegex = /\b\d{2}:\d{2}\b/; 
+                const timeRegex = /(\d{1,2}:\d{2})/;
+                let levels = 0;
 
-                while (row && attempts < 6) {
-                    if (timeRegex.test(row.innerText)) {
-                        timeFound = row.innerText.match(timeRegex)[0];
-                        break;
+                // Walk up max 5 levels looking for a Time
+                while (container && levels < 5) {
+                    const text = container.innerText || "";
+                    // Check if this specific container has a time match
+                    // AND ensure the text isn't massive (like the whole page)
+                    if (timeRegex.test(text) && text.length < 500) {
+                        timeFound = text.match(timeRegex)[0];
+                        break; // STOP here, this is our row
                     }
-                    row = row.parentElement;
-                    attempts++;
+                    container = container.parentElement;
+                    levels++;
                 }
 
-                if (row && timeFound) {
-                    const text = row.innerText;
-                    // Filter out empty lines
+                if (container && timeFound) {
+                    const text = container.innerText;
                     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    
+                    // Standardize Time
+                    if (timeFound.length === 4) timeFound = "0" + timeFound;
 
-                    // KNOWN LOCATIONS LIST
-                    const knownLocations = ['ST MARY AXE', 'BROADGATE', 'VICTORIA', 'ANGEL', 'SOUTH BANK', 'BAYSWATER', 'HAMMERSMITH', 'KENSINGTON', 'OXFORD CIRCUS', 'RIG', 'HIGH STREET KENSINGTON', 'ST JOHN\'S WOOD', 'HOLBORN'];
-                    
-                    // 1. Find Location Line
-                    const locIndex = lines.findIndex(l => knownLocations.some(loc => l.toUpperCase().includes(loc)));
-                    
+                    // Parse Location/Name
                     let location = "1Rebel London";
-                    let title = "1Rebel Class";
+                    let className = "1Rebel Class";
                     let trainer = "Staff";
 
+                    const knownLocs = ['ANGEL', 'BROADGATE', 'VICTORIA', 'SOUTH BANK', 'ST MARY AXE', 'BAYSWATER', 'HOLBORN', 'KENSINGTON', 'OXFORD CIRCUS', 'ST JOHNS WOOD', 'HAMMERSMITH'];
+                    const locIndex = lines.findIndex(l => knownLocs.some(loc => l.toUpperCase().includes(loc)));
+                    
                     if (locIndex > -1) {
                         location = lines[locIndex];
-                        
-                        // Title is usually BEFORE location (ignoring Time)
-                        if (locIndex > 0 && !lines[locIndex - 1].includes(':')) {
-                            title = lines[locIndex - 1];
-                        }
-                        
-                        // Trainer is usually AFTER location
-                        if (lines[locIndex + 1] && !lines[locIndex + 1].toUpperCase().includes('BOOK')) {
-                            trainer = lines[locIndex + 1];
+                        if (locIndex > 0 && !lines[locIndex-1].includes(':')) className = lines[locIndex-1];
+                        if (lines[locIndex+1]) {
+                             const pt = lines[locIndex+1].toUpperCase();
+                             if (!pt.includes('BOOK')) trainer = lines[locIndex+1];
                         }
                     } else {
-                        // Fallback if no location found (Use basic order)
-                        // Time -> Title -> Trainer -> Button
-                        const timeIndex = lines.findIndex(l => l.includes(timeFound));
-                        if (lines[timeIndex + 1]) title = lines[timeIndex + 1];
-                        if (lines[timeIndex + 2]) {
-                             // Make sure it's not the location
-                             if (!knownLocations.some(k => lines[timeIndex+2].toUpperCase().includes(k))) {
-                                 trainer = lines[timeIndex + 2];
-                             }
-                        }
+                        // Fallback logic
+                        // Remove time from lines to avoid confusion
+                        const cleanLines = lines.filter(l => !l.includes(timeFound));
+                        if (cleanLines[0]) className = cleanLines[0];
+                        if (cleanLines[1]) trainer = cleanLines[1];
                     }
 
-                    // Filter garbage
-                    if (title.includes('WEBSITE') || title.includes('COOKIE')) return;
-                    if (trainer.toUpperCase().includes('BOOK') || trainer.toUpperCase().includes('WAIT')) trainer = "Staff";
+                    const btnText = btn.innerText.toUpperCase();
+                    let status = 'Full';
+                    if (btnText.includes('BOOK')) status = 'Open';
+                    else if (btnText.includes('WAITLIST')) status = 'Waitlist';
 
                     results.push({
-                        gym: '1Rebel',
-                        raw_date: currentDateStr,
-                        start_time: timeFound,
-                        class_name: title,
+                        gym_slug: '1rebel',
+                        date: currentDateStr,
+                        time: timeFound,
+                        class_name: className,
                         location: location,
-                        instructor: trainer,
-                        status: rawText.toUpperCase().includes('WAITLIST') || rawText.toUpperCase().includes('STANDBY') ? 'Waitlist' : 'Open',
-                        link: bookingLink
+                        trainer: trainer,
+                        status: status,
+                        link: btn.href || 'https://www.1rebel.com/en-gb/reserve'
                     });
                 }
             });
+            
             return results;
-        }, dateStr, dailyUrl);
+        }, dateStr);
 
-        allClasses = allClasses.concat(dailyClasses);
-        await new Promise(r => setTimeout(r, 200));
+        if (dailyClasses.length > 0) {
+            console.log(`   ✅ Found ${dailyClasses.length} classes.`);
+            allClasses = allClasses.concat(dailyClasses);
+        }
     }
 
+    // Deduplication
     const uniqueClasses = [];
     const seen = new Set();
     allClasses.forEach(c => {
-        const key = `${c.raw_date}-${c.start_time}-${c.class_name}-${c.location}`;
-        if (!seen.has(key)) {
-            seen.add(key);
-            uniqueClasses.push(c);
-        }
+        const key = `${c.date}-${c.time}-${c.class_name}-${c.location}`;
+        if (!seen.has(key)) { seen.add(key); uniqueClasses.push(c); }
     });
 
-    console.log(`[1Rebel] Success! Found ${uniqueClasses.length} clean classes.`);
+    console.log(`[1Rebel] Success! Found ${uniqueClasses.length} unique classes.`);
     return uniqueClasses;
 
   } catch (error) {
     console.error('[1Rebel] Error:', error);
     return [];
   } finally {
-    await page.close();
+    if (page) await page.close();
   }
 }
