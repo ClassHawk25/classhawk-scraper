@@ -1,173 +1,105 @@
 // scrapers/extractors/barrys.js
-import fs from 'fs';
+// Barry's London - MarianaTek API Scraper (converted from Puppeteer)
 
-/**
- * Barry's Scraper v12: The Forensic Examiner
- * Debugs the specific data payload causing the DB constraint violation.
- */
-function buildBarryUrls(initialUrl, daysToScrape = 7) {
-  const results = [];
-  const today = new Date();
-  const baseUrl = "https://www.barrys.com/schedule/london-east/";
+const MARIANATEK_API = 'https://barrysbootcamp.marianatek.com/api/customer/v1';
+const REGION_ID = '9790'; // London
 
-  for (let i = 0; i < daysToScrape; i++) {
-    const nextDate = new Date(today);
-    nextDate.setDate(today.getDate() + i);
-    const dateString = nextDate.toISOString().split('T')[0];
-    
-    // Magic Path: Region 9790, Location 9834
-    const magicPath = `/schedule/daily/9790?activeDate=${dateString}&locations=9834`;
-    const finalUrl = `${baseUrl}?_mt=${encodeURIComponent(magicPath)}`;
-    
-    results.push({ url: finalUrl, date: dateString });
-  }
-  return results;
-}
+// Barry's London locations (from API discovery)
+const BARRYS_LOCATIONS = [
+  { id: '9832', name: 'London Central' },
+  { id: '9840', name: 'London Soho' },
+  { id: '9837', name: 'London Canary Wharf' },
+  { id: '9833', name: "London St Paul's" },
+  { id: '9836', name: 'London SW1' },
+  { id: '9834', name: 'London East' },
+  { id: '9835', name: 'London West' }
+];
 
 async function scrapeBarrys(browser, config) {
-  const rawClasses = [];
-  const urlsToScrape = buildBarryUrls(config.url, 7);
+  // Note: browser param kept for compatibility with engine.js but not used
+  // This is a pure API scraper - no Puppeteer needed
 
-  console.log(`\n💪 Starting Barry's Scrape...`);
+  const today = new Date();
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + 14);
 
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1400, height: 1200 });
+  const minDate = today.toISOString().split('T')[0];
+  const maxDate = endDate.toISOString().split('T')[0];
 
-  // --- SCRAPE LOOP ---
-  for (const item of urlsToScrape) {
-    const { url, date } = item;
-    console.log(`   → Scraping: ${date} ...`);
+  console.log(`[Barry's] Fetching classes from ${minDate} to ${maxDate}...`);
 
-    try {
-      await page.goto(url, { waitUntil: 'domcontentloaded' });
+  // Paginate through all results
+  let allResults = [];
+  let page = 1;
+  let hasMore = true;
 
-      // 1. CLICK COOKIE BUTTON
-      try {
-        const cookieBtn = await page.evaluateHandle(() => {
-          const buttons = Array.from(document.querySelectorAll('button, a'));
-          return buttons.find(b => b.innerText.toUpperCase().includes('ACCEPT ALL'));
-        });
-        if (cookieBtn) { await cookieBtn.click(); await new Promise(r => setTimeout(r, 500)); }
-      } catch(e) { /* ignore */ }
+  try {
+    while (hasMore) {
+      const url = `${MARIANATEK_API}/classes?min_start_date=${minDate}&max_start_date=${maxDate}&region=${REGION_ID}&page_size=500&page=${page}`;
 
-      // 2. FIND FRAME
-      let targetFrame = null;
-      await new Promise(r => setTimeout(r, 4000));
-      const frames = page.frames();
+      const res = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        }
+      });
 
-      for (const frame of frames) {
-         if (frame.url().includes('marianaiframes.com') || frame.url().includes('schedule/daily')) {
-             targetFrame = frame;
-             break;
-         }
-      }
-      if (!targetFrame) targetFrame = page;
-
-      // 3. WAIT FOR DATA
-      try {
-        await targetFrame.waitForSelector('tr[data-test-row="table-row"]', { timeout: 8000 });
-      } catch (e) { }
-
-      // 4. EXTRACT DATA
-      const result = await targetFrame.evaluate((targetDate) => {
-        const data = [];
-        const rows = Array.from(document.querySelectorAll('tr[data-test-row="table-row"]'));
-
-        rows.forEach((row) => {
-            try {
-                const timeCell = row.querySelector('td'); 
-                const timeText = timeCell ? timeCell.innerText.trim() : '';
-                
-                // Matches "7:10", "07:10", "10:00"
-                const timeMatch = timeText.match(/(\d{1,2}:\d{2})/); 
-                const time = timeMatch ? timeMatch[0] : null;
-
-                if (!time) return; 
-
-                let className = "Barry's Class";
-                const classBtn = row.querySelector('[data-test-button*="class-details"]');
-                if (classBtn) className = classBtn.innerText.trim();
-                
-                let trainer = "Instructor";
-                const instrBtn = row.querySelector('[data-test-button*="instructor-details"]');
-                if (instrBtn) trainer = instrBtn.innerText.trim();
-
-                let status = 'Full';
-                let link = null;
-                const resBtn = row.querySelector('[data-test-button*="reserve"]');
-                
-                if (resBtn) {
-                    const btnText = resBtn.innerText.toUpperCase();
-                    link = resBtn.href;
-                    if (btnText.includes('RESERVE') || btnText.includes('BOOK')) status = 'Open';
-                    else if (btnText.includes('WAITLIST')) status = 'Waitlist';
-                } else if (row.innerText.toUpperCase().includes('FULL')) {
-                    status = 'Full';
-                }
-
-                if (!link) link = 'https://www.barrys.com/schedule/london-east/';
-
-                data.push({
-                    gym_slug: 'barrys',
-                    class_name: className,
-                    trainer: trainer,
-                    location: "London East",
-                    date: targetDate,
-                    time: time, 
-                    status: status,
-                    link: link
-                });
-
-            } catch (err) {}
-        });
-        return data;
-      }, date);
-
-      if (result.length > 0) {
-        console.log(`     ✅ Found ${result.length} classes.`);
-        rawClasses.push(...result);
-      } else {
-        console.log(`     ⚠️ No classes found.`);
+      if (!res.ok) {
+        console.log(`[Barry's] API error: ${res.status}`);
+        break;
       }
 
-    } catch (err) { 
-        console.error(`     ❌ Error scraping ${date}: ${err.message}`); 
+      const data = await res.json();
+      const results = data.results || [];
+      allResults = allResults.concat(results);
+
+      // Check if there are more pages
+      hasMore = data.next !== null;
+      page++;
+
+      if (page > 10) break; // Safety limit
     }
-  }
 
-  await page.close();
+    const classes = allResults;
 
-  // --- 5. SANITIZATION & FORENSICS ---
-  console.log("\n🕵️‍♂️ RUNNING FORENSIC CHECK...");
-  
-  const cleanClasses = rawClasses.filter(c => {
-      if (!c.time) {
-          console.log("     ❌ DISCARDING INVALID CLASS (No Time):", c);
-          return false;
+    const allClasses = classes.map(cls => {
+      const startTime = new Date(cls.start_datetime);
+      const dateStr = startTime.toISOString().split('T')[0];
+      // Convert to local UK time
+      const timeStr = startTime.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'Europe/London'
+      });
+
+      let status = 'Open';
+      if (cls.available_spot_count === 0) {
+        status = cls.waitlist_available ? 'Waitlist' : 'Full';
       }
-      return true;
-  }).map(c => {
-      // Ensure Time is strictly HH:MM
-      let cleanTime = c.time.trim();
-      
-      // Fix "7:30" -> "07:30"
-      if (/^\d:\d{2}$/.test(cleanTime)) {
-          cleanTime = "0" + cleanTime;
-      }
+
+      const locationName = cls.location?.name || "Barry's";
 
       return {
-          ...c,
-          time: cleanTime
+        gym_slug: `barrys-${locationName.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-')}`,
+        class_name: cls.class_type?.name || "Barry's Class",
+        trainer: cls.instructors?.[0]?.name || 'Instructor',
+        location: locationName,
+        date: dateStr,
+        time: timeStr,
+        status: status,
+        link: 'https://www.barrys.com/book-now/',
+        source_id: `marianatek-barrys-${cls.id}`
       };
-  });
+    });
 
-  // LOG THE FINAL DATA DUMP
-  // This will show us EXACTLY what is being sent to Supabase
-  console.log("\n📦 FINAL PAYLOAD SAMPLE (First 3 items):");
-  console.log(JSON.stringify(cleanClasses.slice(0, 3), null, 2));
+    console.log(`[Barry's] ✓ ${allClasses.length} classes from ${BARRYS_LOCATIONS.length} locations`);
+    return allClasses;
 
-  console.log(`\n✨ Total Valid Classes: ${cleanClasses.length}`);
-  return cleanClasses;
+  } catch (error) {
+    console.error(`[Barry's] Error fetching API: ${error.message}`);
+    return [];
+  }
 }
 
 export default scrapeBarrys;

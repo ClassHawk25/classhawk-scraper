@@ -1,15 +1,19 @@
-// scrapers/extractors/bstLagree.js
-// BST Lagree London - MarianaTek API Scraper (converted from Puppeteer)
+// scrapers/extractors/frame.js
+// Frame London - MarianaTek API Scraper
 
-const MARIANATEK_API = 'https://bst.marianatek.com/api/customer/v1';
-const REGION_ID = '48541'; // London
+const MARIANATEK_API = 'https://frame.marianatek.com/api/customer/v1';
+const REGION_ID = '48541';
 
-// BST Lagree location (from API discovery)
-const BST_LOCATIONS = [
-  { id: '48717', name: 'Angel' }
+// Frame London locations (from API discovery)
+const FRAME_LOCATIONS = [
+  { id: '48719', name: 'Kings Cross' },
+  { id: '48720', name: 'Shoreditch' },
+  { id: '48718', name: 'Hammersmith' },
+  { id: '48717', name: 'Angel' },
+  { id: '48721', name: 'Victoria' }
 ];
 
-async function scrapeBSTLagree(browser, config) {
+async function scrapeFrame(browser, config) {
   // Note: browser param kept for compatibility with engine.js but not used
   // This is a pure API scraper - no Puppeteer needed
 
@@ -20,7 +24,7 @@ async function scrapeBSTLagree(browser, config) {
   const minDate = today.toISOString().split('T')[0];
   const maxDate = endDate.toISOString().split('T')[0];
 
-  console.log(`[BST Lagree] Fetching classes from ${minDate} to ${maxDate}...`);
+  console.log(`[Frame] Fetching classes from ${minDate} to ${maxDate}...`);
 
   // Paginate through all results
   let allResults = [];
@@ -39,7 +43,7 @@ async function scrapeBSTLagree(browser, config) {
       });
 
       if (!res.ok) {
-        console.log(`[BST Lagree] API error: ${res.status}`);
+        console.log(`[Frame] API error: ${res.status}`);
         break;
       }
 
@@ -51,15 +55,19 @@ async function scrapeBSTLagree(browser, config) {
       hasMore = data.next !== null;
       page++;
 
-      if (page > 5) break; // Safety limit
+      if (page > 10) break; // Safety limit
     }
 
-    const classes = allResults;
+    // Filter out online classes
+    const londonClasses = allResults.filter(cls => {
+      const locName = cls.location?.name?.toLowerCase() || '';
+      return !locName.includes('online');
+    });
 
-    const allClasses = classes.map(cls => {
+    const allClasses = londonClasses.map(cls => {
       const startTime = new Date(cls.start_datetime);
       const dateStr = startTime.toISOString().split('T')[0];
-      // Convert to local UK time
+      // Convert to local UK time (UTC in winter, BST in summer)
       const timeStr = startTime.toLocaleTimeString('en-GB', {
         hour: '2-digit',
         minute: '2-digit',
@@ -72,28 +80,28 @@ async function scrapeBSTLagree(browser, config) {
         status = cls.waitlist_available ? 'Waitlist' : 'Full';
       }
 
-      const locationName = cls.location?.name || 'BST Lagree';
+      const locationName = cls.location?.name || 'Frame';
 
       return {
-        gym_slug: 'bstlagree',
-        class_name: cls.class_type?.name || 'Lagree Class',
+        gym_slug: 'frame',
+        class_name: cls.class_type?.name || 'Frame Class',
         trainer: cls.instructors?.[0]?.name || 'Instructor',
-        location: `BST Lagree ${locationName}`,
+        location: `Frame ${locationName}`,
         date: dateStr,
         time: timeStr,
         status: status,
-        link: 'https://bstlagree.com/book/',
-        source_id: `marianatek-bstlagree-${cls.id}`
+        link: `https://www.moveyourframe.com/timetable/`,
+        source_id: `marianatek-frame-${cls.id}`
       };
     });
 
-    console.log(`[BST Lagree] ✓ ${allClasses.length} classes from ${BST_LOCATIONS.length} locations`);
+    console.log(`[Frame] ✓ ${allClasses.length} classes from ${FRAME_LOCATIONS.length} locations`);
     return allClasses;
 
   } catch (error) {
-    console.error(`[BST Lagree] Error fetching API: ${error.message}`);
+    console.error(`[Frame] Error fetching API: ${error.message}`);
     return [];
   }
 }
 
-export default scrapeBSTLagree;
+export default scrapeFrame;

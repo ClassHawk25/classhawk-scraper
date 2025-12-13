@@ -1,148 +1,135 @@
-import puppeteer from 'puppeteer';
+// scrapers/extractors/virginActive.js
+// Virgin Active UK - API Scraper (converted from Puppeteer)
 
-// Helper to clean up the title
-const cleanTitle = (rawTitle) => {
-  if (!rawTitle) return "";
+const VIRGIN_ACTIVE_API = 'https://www.virginactive.co.uk/api/club';
 
-  // 1. Remove Time at start (Matches "07:15" or "7:15")
-  let cleaned = rawTitle.replace(/^\d{1,2}:\d{2}\s+/, '');
+// Virgin Active UK clubs (from GetClubDetails API)
+// Filtering to London & surrounding area clubs
+const LONDON_CLUBS = [
+  { id: 76, name: 'Aldersgate', slug: 'aldersgate' },
+  { id: 29, name: 'Bank', slug: 'bank' },
+  { id: 34, name: 'Bromley', slug: 'bromley' },
+  { id: 35, name: 'Canary Riverside', slug: 'canary-riverside' },
+  { id: 953, name: 'Cannon Street (Walbrook)', slug: 'cannon-street' },
+  { id: 421, name: 'Chiswick Park', slug: 'chiswick-park' },
+  { id: 405, name: 'Chiswick Riverside', slug: 'chiswick-riverside' },
+  { id: 38, name: 'Clapham', slug: 'clapham' },
+  { id: 39, name: 'Crouch End', slug: 'crouch-end' },
+  { id: 47, name: 'Fulham Pools', slug: 'fulham-pools' },
+  { id: 12, name: 'Islington Angel', slug: 'islington-angel' },
+  { id: 51, name: 'Kensington', slug: 'kensington' },
+  { id: 56, name: 'Mayfair', slug: 'mayfair' },
+  { id: 57, name: 'Mill Hill', slug: 'mill-hill' },
+  { id: 59, name: 'Moorgate', slug: 'moorgate' },
+  { id: 60, name: 'Notting Hill', slug: 'notting-hill' },
+  { id: 68, name: 'Strand', slug: 'strand' },
+  { id: 69, name: 'Streatham', slug: 'streatham' },
+  { id: 410, name: 'Swiss Cottage', slug: 'swiss-cottage' },
+  { id: 425, name: 'Wandsworth Smugglers Way', slug: 'wandsworth-smugglers-way' },
+  { id: 408, name: 'Wimbledon Worple Road', slug: 'wimbledon-worple-road' }
+];
 
-  // 2. Remove Duration and everything after
-  const durationMatch = cleaned.match(/\s+\d+\s*(Mins|mins)/);
-  if (durationMatch) {
-      cleaned = cleaned.substring(0, durationMatch.index);
-  }
+// Helper to clean up class titles
+function cleanTitle(rawTitle) {
+  if (!rawTitle) return '';
+  return rawTitle
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+    .trim();
+}
 
-  // 3. Title Case
-  return cleaned.toLowerCase().split(' ').map(word => {
-      return word.charAt(0).toUpperCase() + word.slice(1);
-  }).join(' ').trim();
-};
+async function scrapeVirginActive(browser, config) {
+  // Note: browser param kept for compatibility with engine.js but not used
+  // This is a pure API scraper - no Puppeteer needed
 
-export default async function scrapeVirginActive(browser, config) {
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1300, height: 900 });
+  console.log(`[Virgin Active] Fetching schedules from ${LONDON_CLUBS.length} London clubs...`);
 
-  let masterList = [];
-  const urls = config.locations || [config.url];
+  let allClasses = [];
 
-  const formatLocation = (url) => {
-      if (url.includes('crouch-end')) return 'Crouch End';
-      if (url.includes('angel')) return 'Angel';
-      return 'Virgin Active';
-  };
-
-  const calculateDate = (dayIndex) => {
-      const today = new Date();
-      const target = new Date(today);
-      target.setDate(today.getDate() + dayIndex);
-      return target.toISOString().split('T')[0];
-  };
-
-  for (const url of urls) {
-    console.log(`[Virgin Active] Navigating to: ${formatLocation(url)}`);
+  for (const club of LONDON_CLUBS) {
     try {
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-      
-      try {
-          const cookieBtn = await page.waitForSelector('#onetrust-accept-btn-handler', { timeout: 3000 });
-          if (cookieBtn) await cookieBtn.click();
-      } catch(e) {}
+      const url = `${VIRGIN_ACTIVE_API}/getclubtimetable?id=${club.id}`;
 
-      try {
-        await page.waitForFunction(() => document.body.innerText.includes('FILTER'), { timeout: 10000 });
-      } catch(e) {}
-
-      for (let i = 0; i < 7; i++) {
-        const dateStr = calculateDate(i);
-        
-        const dailyClasses = await page.evaluate((currentDate) => {
-           const results = [];
-           // Select rows
-           const cards = Array.from(document.querySelectorAll('div[class*="timetable"], div[class*="class-item"], .classes-list-item, tr'));
-
-           cards.forEach(card => {
-               const text = card.innerText; 
-               if (!text.includes(':')) return;
-
-               // 1. TIME CHECK
-               const timeMatch = text.match(/(\d{2}:\d{2})/);
-               const time = timeMatch ? timeMatch[0] : null;
-               if (!time) return;
-
-               // 2. STRICT TITLE CHECK (The Fix)
-               // We ONLY accept this row if we find a dedicated title element.
-               // We do NOT fall back to raw text.
-               const titleEl = card.querySelector('h3, h4, strong, .class-name, [data-testid="class-name"]');
-               
-               if (!titleEl) return; // SKIP junk rows
-
-               let title = titleEl.innerText.trim();
-               
-               // Filter out if title is just a time or empty
-               if (title.length < 3 || title.includes('2025')) return;
-
-               // 3. TRAINER CHECK
-               let trainer = "Staff";
-               const trainerEl = card.querySelector('.instructor, .teacher, .class-instructor');
-               if (trainerEl) {
-                   trainer = trainerEl.innerText.trim();
-               } else {
-                   const parts = text.split(/Mins|mins/);
-                   if (parts.length > 1) {
-                       let possibleName = parts[1].trim();
-                       possibleName = possibleName.replace(/Book|Waitlist|Full|Join/gi, '').trim();
-                       if(possibleName.length > 2 && possibleName.length < 30) trainer = possibleName;
-                   }
-               }
-
-               let status = 'Open';
-               if (text.toLowerCase().includes('waitlist') || text.toLowerCase().includes('full')) {
-                   status = 'Waitlist';
-               }
-
-               results.push({
-                   time,
-                   title, 
-                   trainer,
-                   status,
-                   link: window.location.href 
-               });
-           });
-           return results;
-        }, dateStr);
-
-        if (dailyClasses.length > 0) {
-            const cleaned = dailyClasses.map(c => ({
-                gym_slug: 'virginactive',
-                date: dateStr,
-                time: c.time,
-                class_name: cleanTitle(c.title),
-                location: formatLocation(url),
-                trainer: c.trainer,
-                status: c.status,
-                link: c.link
-            }));
-            
-            masterList = masterList.concat(cleaned);
+      const res = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
         }
+      });
+
+      if (!res.ok) {
+        console.log(`[Virgin Active] API error for ${club.name}: ${res.status}`);
+        continue;
       }
-    } catch (err) {
-      console.error(`   ❌ Error scraping ${url}: ${err.message}`);
+
+      const json = await res.json();
+      const data = json.data || {};
+      const classTimes = data.classTimes || [];
+      const classes = data.classes || [];
+      const instructors = data.instructors || [];
+
+      // Build lookup maps
+      const classMap = {};
+      const instructorMap = {};
+
+      classes.forEach(c => classMap[c.id] = c);
+      instructors.forEach(i => instructorMap[i.id] = i);
+
+      // Map class times to our format
+      const clubClasses = classTimes.map(ct => {
+        const classInfo = classMap[ct.classId] || {};
+        const instructor = instructorMap[ct.instructorId] || {};
+
+        const startTime = new Date(ct.startTime);
+        const dateStr = startTime.toISOString().split('T')[0];
+        const timeStr = startTime.toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: 'Europe/London'
+        });
+
+        // Determine status
+        let status = 'Open';
+        if (ct.status === 'Full' || ct.booked >= ct.capacity) {
+          status = ct.waitlistCapacity > 0 ? 'Waitlist' : 'Full';
+        } else if (ct.status === 'Waitlist') {
+          status = 'Waitlist';
+        }
+
+        return {
+          gym_slug: 'virginactive',
+          class_name: cleanTitle(classInfo.name || 'Class'),
+          trainer: instructor.name || 'Staff',
+          location: `Virgin Active ${club.name}`,
+          date: dateStr,
+          time: timeStr,
+          status: status,
+          link: `https://www.virginactive.co.uk/clubs/${club.slug}/timetable`,
+          source_id: `virginactive-${club.id}-${ct.id}`
+        };
+      });
+
+      allClasses = allClasses.concat(clubClasses);
+
+    } catch (error) {
+      console.error(`[Virgin Active] Error fetching ${club.name}: ${error.message}`);
     }
   }
 
-  // Deduplicate
-  const uniqueClasses = [];
-  const seen = new Set();
-  masterList.forEach(c => {
-      const key = `${c.date}-${c.time}-${c.class_name}`;
-      if (!seen.has(key)) {
-          seen.add(key);
-          uniqueClasses.push(c);
-      }
-  });
+  // Filter to next 14 days only
+  const today = new Date();
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + 14);
+  const todayStr = today.toISOString().split('T')[0];
+  const endStr = endDate.toISOString().split('T')[0];
 
-  console.log(`[Virgin Active] Success! Total Clean Count: ${uniqueClasses.length}`);
-  return uniqueClasses;
+  const filteredClasses = allClasses.filter(c => c.date >= todayStr && c.date <= endStr);
+
+  console.log(`[Virgin Active] ✓ ${filteredClasses.length} classes from ${LONDON_CLUBS.length} London clubs`);
+  return filteredClasses;
 }
+
+export default scrapeVirginActive;

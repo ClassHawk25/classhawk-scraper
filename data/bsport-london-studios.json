@@ -1,0 +1,702 @@
+{
+  "updated": "2025-12-03",
+  "total": 122,
+  "studios": [
+    {
+      "name": "&Osteo Fitness - Back",
+      "companyId": 3278,
+      "websiteUrl": "https://www.andosteo.co.uk",
+      "scheduleUrl": "https://www.andosteo.co.uk/book"
+    },
+    {
+      "name": "12x3 Boxing",
+      "companyId": 4297,
+      "websiteUrl": "https://www.12x3gym.co.uk",
+      "scheduleUrl": "https://www.12x3gym.co.uk/schedule"
+    },
+    {
+      "name": "1Sculpt Fitness Reigate Studio",
+      "companyId": 659,
+      "websiteUrl": "https://www.1sculpt.com"
+    },
+    {
+      "name": "24N Fitness",
+      "companyId": 3535,
+      "websiteUrl": "https://www.24nfitness.com",
+      "scheduleUrl": "https://www.24nfitness.com/class-schedule"
+    },
+    {
+      "name": "Absolute Studios Parsons Green PT Studio",
+      "companyId": 3986,
+      "websiteUrl": "https://www.absolute-studios.co.uk"
+    },
+    {
+      "name": "Aerial & Pole Studio",
+      "companyId": 905,
+      "websiteUrl": "https://aerialactive.co.uk",
+      "scheduleUrl": "https://aerialactive.co.uk/schedule"
+    },
+    {
+      "name": "Akshobya - Tara London",
+      "companyId": 4615,
+      "websiteUrl": "https://tarayogacentre.co.uk",
+      "scheduleUrl": "https://tarayogacentre.co.uk/book"
+    },
+    {
+      "name": "Alex's House",
+      "companyId": 1253,
+      "websiteUrl": "https://www.thefitloft.co.uk",
+      "scheduleUrl": "https://www.thefitloft.co.uk/schedule"
+    },
+    {
+      "name": "Align Studio Hampton Hill",
+      "companyId": 2227,
+      "websiteUrl": "https://www.alignstudio.co.uk",
+      "scheduleUrl": "https://www.alignstudio.co.uk/booking"
+    },
+    {
+      "name": "Ánimo, Abney Park",
+      "companyId": 378,
+      "websiteUrl": "https://www.animolondon.co.uk"
+    },
+    {
+      "name": "ARC Venue 1rst floor",
+      "companyId": 789,
+      "websiteUrl": "https://www.arcdancestudio.com",
+      "scheduleUrl": "https://www.arcdancestudio.com/timetable"
+    },
+    {
+      "name": "Astaire Studio",
+      "companyId": 1091,
+      "websiteUrl": "https://www.weareevoke.com",
+      "scheduleUrl": "https://www.weareevoke.com/classes"
+    },
+    {
+      "name": "Barre Studio",
+      "companyId": 1970,
+      "websiteUrl": "https://luxurylondon.co.uk"
+    },
+    {
+      "name": "Base Dance Studios",
+      "companyId": 2881,
+      "websiteUrl": "https://www.basedancestudios.com",
+      "scheduleUrl": "https://www.basedancestudios.com/schedule"
+    },
+    {
+      "name": "Battersea – Main Room",
+      "companyId": 1977,
+      "websiteUrl": "https://www.found.london",
+      "scheduleUrl": "https://www.found.london/book"
+    },
+    {
+      "name": "Battersea – Main Room",
+      "companyId": 1974,
+      "websiteUrl": "https://www.found.london",
+      "scheduleUrl": "https://www.found.london/book"
+    },
+    {
+      "name": "Battersea Arts Centre",
+      "companyId": 3332,
+      "websiteUrl": "https://reformcore.com",
+      "scheduleUrl": "https://reformcore.com/classes"
+    },
+    {
+      "name": "Beattitude - Main Studio",
+      "companyId": 1071,
+      "websiteUrl": "https://gymsfitness.co.uk"
+    },
+    {
+      "name": "BJJ Private Area",
+      "companyId": 1236,
+      "websiteUrl": "https://www.thekodokan.com",
+      "scheduleUrl": "https://www.thekodokan.com/schedule"
+    },
+    {
+      "name": "Blackheath Studio 1",
+      "companyId": 638,
+      "websiteUrl": "https://www.blackheathstudio.co.uk",
+      "scheduleUrl": "https://www.blackheathstudio.co.uk/bookings"
+    },
+    {
+      "name": "Bliss Pilates Online/Live streamed Classroom.",
+      "companyId": 382,
+      "websiteUrl": "https://yogarise.london"
+    },
+    {
+      "name": "Body20 UK Ltd",
+      "companyId": 4586,
+      "websiteUrl": "https://body20.co.uk",
+      "scheduleUrl": "https://body20.co.uk/book"
+    },
+    {
+      "name": "Boom Cycle",
+      "companyId": 1976,
+      "websiteUrl": "https://boomcycle.co.uk",
+      "scheduleUrl": "https://boomcycle.co.uk/classes"
+    },
+    {
+      "name": "Boom Cycle Holding",
+      "companyId": 1969,
+      "websiteUrl": "https://boomcycle.co.uk",
+      "scheduleUrl": "https://boomcycle.co.uk/classes"
+    },
+    {
+      "name": "Boom Cycle Holding 2",
+      "companyId": 1967,
+      "websiteUrl": "https://boomcycle.co.uk",
+      "scheduleUrl": "https://boomcycle.co.uk/classes"
+    },
+    {
+      "name": "Brentham Club",
+      "companyId": 2331,
+      "websiteUrl": "https://www.brenthamclub.co.uk",
+      "scheduleUrl": "https://www.brenthamclub.co.uk/classes"
+    },
+    {
+      "name": "Carney's Community",
+      "companyId": 1590,
+      "websiteUrl": "https://carneyscommunity.org"
+    },
+    {
+      "name": "Chapel Studio",
+      "companyId": 4654,
+      "websiteUrl": "https://www.chapelstudiopilates.co.uk",
+      "scheduleUrl": "https://www.chapelstudiopilates.co.uk/classes"
+    },
+    {
+      "name": "Cheam - Private Pool",
+      "companyId": 2094,
+      "websiteUrl": "https://www.everyoneactive.com",
+      "scheduleUrl": "https://www.everyoneactive.com/booking"
+    },
+    {
+      "name": "Chelsea - Studio 2",
+      "companyId": 1978,
+      "websiteUrl": "https://www.better.org.uk",
+      "scheduleUrl": "https://www.better.org.uk/book"
+    },
+    {
+      "name": "Chelsea – Main room",
+      "companyId": 1973,
+      "websiteUrl": "https://www.better.org.uk",
+      "scheduleUrl": "https://www.better.org.uk/book"
+    },
+    {
+      "name": "Chiswick – Studio 1",
+      "companyId": 1979,
+      "websiteUrl": "https://www.thehogarth.co.uk",
+      "scheduleUrl": "https://www.thehogarth.co.uk/classes"
+    },
+    {
+      "name": "Cirque du Dance, The Stroud Brewery",
+      "companyId": 3849,
+      "websiteUrl": "https://www.cirquedudance.co.uk",
+      "scheduleUrl": "https://www.cirquedudance.co.uk/book"
+    },
+    {
+      "name": "City – Main Room",
+      "companyId": 1972,
+      "websiteUrl": "https://www.nuffieldhealth.com",
+      "scheduleUrl": "https://www.nuffieldhealth.com/book"
+    },
+    {
+      "name": "Cockfosters Studio",
+      "companyId": 4128,
+      "websiteUrl": "https://www.4theloveofbarre.com",
+      "scheduleUrl": "https://www.4theloveofbarre.com/booking"
+    },
+    {
+      "name": "Compton School",
+      "companyId": 1745,
+      "websiteUrl": "https://school-space.org",
+      "scheduleUrl": "https://school-space.org/book"
+    },
+    {
+      "name": "Core Clapton Wellness Centre",
+      "companyId": 608,
+      "websiteUrl": "https://www.coreclapton.org",
+      "scheduleUrl": "https://www.coreclapton.org/classes"
+    },
+    {
+      "name": "Core Studio",
+      "companyId": 2106,
+      "websiteUrl": "https://www.thecorestudio.co.uk"
+    },
+    {
+      "name": "CORE: Sculpt Studio",
+      "companyId": 4927
+    },
+    {
+      "name": "Crate Walthamstow",
+      "companyId": 2401,
+      "websiteUrl": "https://www.happity.co.uk",
+      "scheduleUrl": "https://www.happity.co.uk/classes"
+    },
+    {
+      "name": "Crouch End Wellness",
+      "companyId": 3281,
+      "websiteUrl": "https://www.3tribes.co.uk",
+      "scheduleUrl": "https://www.3tribes.co.uk/book"
+    },
+    {
+      "name": "Crystal Palace Park Sphinxes",
+      "companyId": 4797,
+      "websiteUrl": "https://www.better.org.uk",
+      "scheduleUrl": "https://www.better.org.uk/book"
+    },
+    {
+      "name": "Do it Like a Mother - Westcliff",
+      "companyId": 4310,
+      "websiteUrl": "https://doitlikeamother.co.uk",
+      "scheduleUrl": "https://doitlikeamother.co.uk/classes"
+    },
+    {
+      "name": "Downstairs Studio",
+      "companyId": 880,
+      "websiteUrl": "https://www.thefitloft.co.uk",
+      "scheduleUrl": "https://www.thefitloft.co.uk/schedule"
+    },
+    {
+      "name": "East Grinstead: Spirit, Mind & Body Studio",
+      "companyId": 4779
+    },
+    {
+      "name": "East of Eden",
+      "companyId": 308,
+      "scheduleUrl": "https://eastofeden.uk/book"
+    },
+    {
+      "name": "EMBODY",
+      "companyId": 1389,
+      "websiteUrl": "https://embodywellness.co.uk",
+      "scheduleUrl": "https://embodywellness.co.uk/book"
+    },
+    {
+      "name": "Evolve Fitness Studio",
+      "companyId": 1291,
+      "websiteUrl": "https://studioevolve.co.uk",
+      "scheduleUrl": "https://studioevolve.co.uk/classes"
+    },
+    {
+      "name": "Explore Pilates",
+      "companyId": 1816,
+      "websiteUrl": "https://www.explorepilates.co.uk",
+      "scheduleUrl": "https://www.explorepilates.co.uk/classes"
+    },
+    {
+      "name": "Fitness Hub Leytonstone",
+      "companyId": 2883,
+      "websiteUrl": "https://www.fitnesshubeastlondon.com",
+      "scheduleUrl": "https://www.fitnesshubeastlondon.com/book"
+    },
+    {
+      "name": "Floating Fitness London 1 - New Cross",
+      "companyId": 1231,
+      "websiteUrl": "https://www.floatingfitness.com",
+      "scheduleUrl": "https://www.floatingfitness.com/timetable"
+    },
+    {
+      "name": "FOLD at Home",
+      "companyId": 1819,
+      "websiteUrl": "https://foldyoga.co.uk"
+    },
+    {
+      "name": "Fold Yoga",
+      "companyId": 429,
+      "websiteUrl": "https://foldyoga.co.uk"
+    },
+    {
+      "name": "FOUR SIDES LONDON",
+      "companyId": 3277,
+      "websiteUrl": "https://foursideslondon.com",
+      "scheduleUrl": "https://foursideslondon.com/booking"
+    },
+    {
+      "name": "Freedom Clinics",
+      "companyId": 3507,
+      "websiteUrl": "https://freedomclinics.com",
+      "scheduleUrl": "https://freedomclinics.com/book"
+    },
+    {
+      "name": "FTG Studio",
+      "companyId": 4519,
+      "websiteUrl": "https://www.londonfieldsfitness.com",
+      "scheduleUrl": "https://www.londonfieldsfitness.com/classes"
+    },
+    {
+      "name": "Gracie Barra Haringey",
+      "companyId": 2130,
+      "websiteUrl": "https://www.gbharingey.com",
+      "scheduleUrl": "https://www.gbharingey.com/schedule"
+    },
+    {
+      "name": "Grapple Zone Waterloo Main Mats",
+      "companyId": 1732,
+      "websiteUrl": "https://book.grapplezone.co.uk",
+      "scheduleUrl": "https://book.grapplezone.co.uk/book"
+    },
+    {
+      "name": "Grasshopppers RFU",
+      "companyId": 1893,
+      "websiteUrl": "https://grasshoppersrfc.com"
+    },
+    {
+      "name": "Guardians PT, Parliament Hill Lido",
+      "companyId": 2620,
+      "websiteUrl": "https://www.guardianspt.com"
+    },
+    {
+      "name": "Hampstead - Glide",
+      "companyId": 1980,
+      "websiteUrl": "https://studioglidepilates.com",
+      "scheduleUrl": "https://studioglidepilates.com/schedule"
+    },
+    {
+      "name": "Hyrox Sidcup",
+      "companyId": 1524,
+      "websiteUrl": "https://www.themadstudio.co.uk",
+      "scheduleUrl": "https://www.themadstudio.co.uk/timetable"
+    },
+    {
+      "name": "Instagram Live",
+      "companyId": 991,
+      "websiteUrl": "https://psyclelondon.com",
+      "scheduleUrl": "https://psyclelondon.com/book"
+    },
+    {
+      "name": "Islington - Glide studio",
+      "companyId": 1981,
+      "websiteUrl": "https://studioglidepilates.com",
+      "scheduleUrl": "https://studioglidepilates.com/schedule"
+    },
+    {
+      "name": "Kings Road Chelsea",
+      "companyId": 4770,
+      "websiteUrl": "https://www.kingsroad.co.uk",
+      "scheduleUrl": "https://www.kingsroad.co.uk/book"
+    },
+    {
+      "name": "KOBOX",
+      "companyId": 1971,
+      "websiteUrl": "https://kobox.co.uk",
+      "scheduleUrl": "https://kobox.co.uk/classes"
+    },
+    {
+      "name": "Lift Studio LDN",
+      "companyId": 971,
+      "websiteUrl": "https://www.liftstudiolondon.com",
+      "scheduleUrl": "https://www.liftstudiolondon.com/schedule"
+    },
+    {
+      "name": "Line Cycling Studio",
+      "companyId": 498,
+      "websiteUrl": "https://www.cadenceindoorcycling.co.uk",
+      "scheduleUrl": "https://www.cadenceindoorcycling.co.uk/timetable"
+    },
+    {
+      "name": "Livestream Studio",
+      "companyId": 2100,
+      "websiteUrl": "https://thelivestudio.co.uk"
+    },
+    {
+      "name": "London - Bridge",
+      "companyId": 4961,
+      "websiteUrl": "https://www.wellnest.london",
+      "scheduleUrl": "https://www.wellnest.london/book"
+    },
+    {
+      "name": "Lotus Health and Fitness Pilates",
+      "companyId": 490,
+      "websiteUrl": "https://lotushealthandfitness.co.uk",
+      "scheduleUrl": "https://lotushealthandfitness.co.uk/timetable"
+    },
+    {
+      "name": "MAD Lagree",
+      "companyId": 1906,
+      "websiteUrl": "https://letsgomad.com"
+    },
+    {
+      "name": "MakeYoga",
+      "companyId": 2766,
+      "websiteUrl": "https://www.makeyoga.co.uk",
+      "scheduleUrl": "https://www.makeyoga.co.uk/classes"
+    },
+    {
+      "name": "Martial Arts at Mind & Body Studio",
+      "companyId": 2553,
+      "websiteUrl": "https://www.spiritmindandbodystudio.com"
+    },
+    {
+      "name": "Mayfair - Glide studio",
+      "companyId": 1983,
+      "websiteUrl": "https://studioglidepilates.com",
+      "scheduleUrl": "https://studioglidepilates.com/schedule"
+    },
+    {
+      "name": "MBO: Clapham",
+      "companyId": 2402,
+      "websiteUrl": "https://oncorelondon.com",
+      "scheduleUrl": "https://oncorelondon.com/classes"
+    },
+    {
+      "name": "MBO: Dragonfly Yoga Brockley",
+      "companyId": 2346,
+      "websiteUrl": "https://www.dragonfly-yoga.org",
+      "scheduleUrl": "https://www.dragonfly-yoga.org/timetable"
+    },
+    {
+      "name": "MBO: Pilates and Yoga Movement",
+      "companyId": 2995
+    },
+    {
+      "name": "MBO: SE9 Pilates",
+      "companyId": 2235
+    },
+    {
+      "name": "MBO: The Proud Project - W4",
+      "companyId": 2005
+    },
+    {
+      "name": "MBO: Train Yard",
+      "companyId": 1434
+    },
+    {
+      "name": "Mind & Body Studio",
+      "companyId": 1804,
+      "websiteUrl": "https://www.mindandbodystudio.co.uk",
+      "scheduleUrl": "https://www.mindandbodystudio.co.uk/timetable"
+    },
+    {
+      "name": "My Aerial Home - Big Rig",
+      "companyId": 353,
+      "websiteUrl": "https://www.myaerialhome.co.uk",
+      "scheduleUrl": "https://www.myaerialhome.co.uk/timetable"
+    },
+    {
+      "name": "Notting Hill - Glide studio",
+      "companyId": 1984,
+      "websiteUrl": "https://formstudios.co.uk",
+      "scheduleUrl": "https://formstudios.co.uk/book"
+    },
+    {
+      "name": "NXT PHASE",
+      "companyId": 2358,
+      "websiteUrl": "https://www.nxtphasefitness.com",
+      "scheduleUrl": "https://www.nxtphasefitness.com/classes"
+    },
+    {
+      "name": "Online Classes",
+      "companyId": 948,
+      "websiteUrl": "https://psyclelondon.com",
+      "scheduleUrl": "https://psyclelondon.com/book"
+    },
+    {
+      "name": "Online establishment",
+      "companyId": 2238,
+      "websiteUrl": "https://psyclelondon.com",
+      "scheduleUrl": "https://psyclelondon.com/book"
+    },
+    {
+      "name": "ONLINE Spiin Studio",
+      "companyId": 3827,
+      "websiteUrl": "https://www.spiin.co.uk"
+    },
+    {
+      "name": "Osteolates",
+      "companyId": 324,
+      "websiteUrl": "https://appliedpilates.co.uk",
+      "scheduleUrl": "https://appliedpilates.co.uk/timetable"
+    },
+    {
+      "name": "Paper Dress Yoga",
+      "companyId": 1268,
+      "websiteUrl": "https://www.paperdressyoga.co.uk",
+      "scheduleUrl": "https://www.paperdressyoga.co.uk/timetable"
+    },
+    {
+      "name": "Pi Studio The Conservatory",
+      "companyId": 307,
+      "websiteUrl": "https://www.pistudios.co.uk",
+      "scheduleUrl": "https://www.pistudios.co.uk/class-timetable"
+    },
+    {
+      "name": "Pilates Circuit",
+      "companyId": 359,
+      "websiteUrl": "https://www.pilatescircuit.co.uk",
+      "scheduleUrl": "https://www.pilatescircuit.co.uk/timetable"
+    },
+    {
+      "name": "PT Studio",
+      "companyId": 2554,
+      "websiteUrl": "https://fitnesslab.fit"
+    },
+    {
+      "name": "REFORM & VIBES London Bridge",
+      "companyId": 3381,
+      "websiteUrl": "https://www.reformandvibes.com",
+      "scheduleUrl": "https://www.reformandvibes.com/timetable"
+    },
+    {
+      "name": "Reform Ateliér Limited",
+      "companyId": 3910,
+      "websiteUrl": "https://www.reformatelier.com",
+      "scheduleUrl": "https://www.reformatelier.com/book-online"
+    },
+    {
+      "name": "REFORMCORE STUDIO",
+      "companyId": 2156,
+      "websiteUrl": "https://reformcore.com",
+      "scheduleUrl": "https://reformcore.com/classes"
+    },
+    {
+      "name": "Reformer Room",
+      "companyId": 3117,
+      "websiteUrl": "https://www.reformerroomlondon.co.uk"
+    },
+    {
+      "name": "Regal Boxing Gym",
+      "companyId": 4485,
+      "websiteUrl": "https://regalboxinggym.com"
+    },
+    {
+      "name": "RØE Pilates",
+      "companyId": 4849,
+      "websiteUrl": "https://www.roepilates.co.uk",
+      "scheduleUrl": "https://www.roepilates.co.uk/classes"
+    },
+    {
+      "name": "Room 1 - the movement room",
+      "companyId": 2916,
+      "websiteUrl": "https://www.themovementstudio.london",
+      "scheduleUrl": "https://www.themovementstudio.london/schedule"
+    },
+    {
+      "name": "Royal Victoria Gardens",
+      "companyId": 3706,
+      "websiteUrl": "https://sculptandsweatstudio.co.uk",
+      "scheduleUrl": "https://sculptandsweatstudio.co.uk/timetable"
+    },
+    {
+      "name": "Ryu-Kai Martial Arts (G)",
+      "companyId": 2929,
+      "websiteUrl": "https://www.ryu-kai.com",
+      "scheduleUrl": "https://www.ryu-kai.com/classes"
+    },
+    {
+      "name": "Set LDN",
+      "companyId": 2000,
+      "websiteUrl": "https://setldn.com"
+    },
+    {
+      "name": "Shiva Shakti",
+      "companyId": 1433,
+      "scheduleUrl": "https://shivashaktistudios.com/schedule/"
+    },
+    {
+      "name": "Skinnies",
+      "companyId": 2571,
+      "websiteUrl": "https://goteamup.com"
+    },
+    {
+      "name": "Smith's Yard Pilates",
+      "companyId": 865,
+      "websiteUrl": "https://www.grovepilates.co.uk",
+      "scheduleUrl": "https://www.grovepilates.co.uk/timetable"
+    },
+    {
+      "name": "Soma Space",
+      "companyId": 2891,
+      "websiteUrl": "https://www.soma-space.co.uk",
+      "scheduleUrl": "https://www.soma-space.co.uk/classes"
+    },
+    {
+      "name": "St Mary Axe",
+      "companyId": 2159,
+      "websiteUrl": "https://reformcore.com",
+      "scheduleUrl": "https://reformcore.com/classes"
+    },
+    {
+      "name": "St. Mary Axe - Glide studio",
+      "companyId": 1985,
+      "websiteUrl": "https://reformcore.com",
+      "scheduleUrl": "https://reformcore.com/classes"
+    },
+    {
+      "name": "Strengthlabldn Battersea Park",
+      "companyId": 4563,
+      "websiteUrl": "https://strengthlabldn.com"
+    },
+    {
+      "name": "Sunray Community Centre",
+      "companyId": 1448,
+      "websiteUrl": "https://sunraycommunitycentre.com"
+    },
+    {
+      "name": "Ten Health Battersea",
+      "companyId": 2158,
+      "websiteUrl": "https://www.ten.co.uk",
+      "scheduleUrl": "https://www.ten.co.uk/book"
+    },
+    {
+      "name": "Ten Health Islington",
+      "companyId": 2160,
+      "websiteUrl": "https://www.ten.co.uk",
+      "scheduleUrl": "https://www.ten.co.uk/book"
+    },
+    {
+      "name": "Ten Health Mayfair",
+      "companyId": 2157,
+      "websiteUrl": "https://www.ten.co.uk",
+      "scheduleUrl": "https://www.ten.co.uk/book"
+    },
+    {
+      "name": "The MAD Studio",
+      "companyId": 1522,
+      "websiteUrl": "https://www.themadstudio.co.uk",
+      "scheduleUrl": "https://www.themadstudio.co.uk/timetable"
+    },
+    {
+      "name": "The Pilates Quarter",
+      "companyId": 3461,
+      "websiteUrl": "https://www.thepilatesclublondon.co.uk",
+      "scheduleUrl": "https://www.thepilatesclublondon.co.uk/book-a-class"
+    },
+    {
+      "name": "The Rebel Circus Studio - N15",
+      "companyId": 2053,
+      "websiteUrl": "https://www.therebelcircus.co.uk",
+      "scheduleUrl": "https://www.therebelcircus.co.uk/schedule"
+    },
+    {
+      "name": "The Reformery",
+      "companyId": 1086,
+      "websiteUrl": "https://www.thereformery.co.uk",
+      "scheduleUrl": "https://www.thereformery.co.uk/timetable"
+    },
+    {
+      "name": "The Studio by Pilates with Jenna",
+      "companyId": 3462,
+      "websiteUrl": "https://www.pilateswithjenna.co.uk",
+      "scheduleUrl": "https://www.pilateswithjenna.co.uk/classes"
+    },
+    {
+      "name": "Wandsworth - Glide",
+      "companyId": 1986,
+      "websiteUrl": "https://www.the-font.co.uk"
+    },
+    {
+      "name": "Wimbledon - Glide",
+      "companyId": 1987,
+      "websiteUrl": "https://www.fswimbledon.com",
+      "scheduleUrl": "https://www.fswimbledon.com/classes"
+    },
+    {
+      "name": "Zoom Live 1",
+      "companyId": 2001,
+      "websiteUrl": "https://julieligginsfitness.co.uk",
+      "scheduleUrl": "https://julieligginsfitness.co.uk/book"
+    }
+  ],
+  "websitesUpdated": "2025-12-01",
+  "scheduleUrlsUpdated": "2025-12-03"
+}

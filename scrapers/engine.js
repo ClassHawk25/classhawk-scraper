@@ -8,6 +8,9 @@ import scrapeBSTLagree from './extractors/bstLagree.js';
 import scrapeShivaShakti from './extractors/shivaShakti.js';
 import scrapeVirginActive from './extractors/virginActive.js'; 
 import scrapeBarrys from './extractors/barrys.js';
+import scrapeMindBody from './extractors/mindbody.js';
+import scrapeBSport from './extractors/bsport.js';
+import scrapeFrame from './extractors/frame.js';
 import { saveToSupabase } from '../utils/supabase.js';
 import { checkAndNotify } from '../utils/notifier.js';
 
@@ -102,13 +105,43 @@ async function startScraper(gymName) {
         masterList = masterList.concat(data);
     }
 
+    // DISABLED: MindBody API doesn't return UK results (0 classes found)
+    // Keeping code in case API becomes available for UK later
+    // if (shouldRunAll || gymName === 'mindbody') {
+    //     const data = await runScraperSafe('MindBody', scrapeMindBody, browser, configs.mindbody);
+    //     masterList = masterList.concat(data);
+    // }
+
+    if (shouldRunAll || gymName === 'bsport') {
+        const data = await runScraperSafe('BSport', scrapeBSport, browser, configs.bsport);
+        masterList = masterList.concat(data);
+    }
+
+    if (shouldRunAll || gymName === 'frame') {
+        const data = await runScraperSafe('Frame', scrapeFrame, browser, configs.frame);
+        masterList = masterList.concat(data);
+    }
+
     console.log('\n-------------------------');
     console.log(`🏁 ENGINE COMPLETE. Total Classes: ${masterList.length}`);
 
+    // Filter out online/livestream classes
+    const filteredList = masterList.filter(cls => {
+      const className = (cls.class_name || '').toLowerCase();
+      const location = (cls.location || '').toLowerCase();
+      return !className.includes('livestream') &&
+             !className.includes('live stream') &&
+             !className.includes('online') &&
+             !location.includes('online') &&
+             !location.includes('livestream');
+    });
+
+    console.log(`🌐 Filtered out ${masterList.length - filteredList.length} online classes. Remaining: ${filteredList.length}`);
+
     // 3. Save & Notify
-    if (masterList.length > 0) {
-        await saveToSupabase(masterList);
-        await checkAndNotify(masterList); // The "Waitlist Sniper"
+    if (filteredList.length > 0) {
+        await saveToSupabase(filteredList);
+        await checkAndNotify(filteredList); // The "Waitlist Sniper"
     } else {
         console.log('[Engine] No classes found to save.');
     }

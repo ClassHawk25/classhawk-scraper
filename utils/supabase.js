@@ -1,6 +1,7 @@
 // utils/supabase.js
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import { formatTo24Hr } from './formatTime.js';
 
 dotenv.config();
 
@@ -25,7 +26,7 @@ export async function saveToSupabase(classes) {
     // ADAPTER LOGIC: Check for new key, fallback to old key
     const finalGym = c.gym_slug || c.gym || 'unknown';
     const finalDate = c.date || c.raw_date;
-    const finalTime = c.time || c.start_time;
+    const finalTime = formatTo24Hr(c.time || c.start_time);
     const finalTrainer = c.trainer || c.instructor || 'Instructor';
     const finalLocation = c.location || 'London';
     const finalName = c.class_name || 'Class';
@@ -37,11 +38,18 @@ export async function saveToSupabase(classes) {
     }
 
     // Construct Unique ID
-    const uniqueId = `${finalGym}-${finalDate}-${finalTime}-${finalLocation}`
-      .toLowerCase()
-      .replace(/[^a-z0-9-]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+    // If source_id is provided (e.g., from BSport API), use it for stability
+    // Otherwise fall back to generated ID (but avoid location which can change)
+    let uniqueId;
+    if (c.source_id) {
+      uniqueId = c.source_id;
+    } else {
+      uniqueId = `${finalGym}-${finalDate}-${finalTime}-${finalName}`
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
 
     return {
       class_uid: uniqueId,

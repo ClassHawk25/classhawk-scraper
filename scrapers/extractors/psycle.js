@@ -1,129 +1,113 @@
-import puppeteer from 'puppeteer';
+// scrapers/extractors/psycle.js
+// Psycle London - CodexFit API Scraper (converted from Puppeteer)
 
-export default async function scrapePsycle(browser, config) {
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1400, height: 900 });
+const CODEXFIT_API = 'https://psycle.codexfit.com/api/v1/customer';
 
-  let masterList = [];
-  const urls = config.locations || [config.url];
+// Psycle London locations (from API discovery)
+const PSYCLE_LOCATIONS = [
+  { id: 1, name: 'Oxford Circus' },
+  { id: 4, name: 'Shoreditch' },
+  { id: 8, name: 'Clapham' },
+  { id: 10, name: 'Notting Hill' },
+  { id: 15, name: 'Victoria' },
+  { id: 17, name: 'Bank' }
+];
 
-  for (const url of urls) {
-      console.log(`[Psycle] Navigating to: ${url}`);
-      try {
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-        try { await page.waitForFunction(() => document.body.innerText.includes('FILTER'), { timeout: 10000 }); } catch(e) {}
+async function scrapePsycle(browser, config) {
+  // Note: browser param kept for compatibility with engine.js but not used
+  // This is a pure API scraper - no Puppeteer needed
 
-        for (let i = 0; i < 5; i++) {
-            const dateText = await page.evaluate(() => {
-                const active = document.querySelector('.slick-current') || document.querySelector('.is-active'); 
-                return active ? active.innerText.replace(/\n/g, ' ') : null;
-            });
-            const currentDateLabel = dateText || `Day ${i+1}`;
-            console.log(`[Psycle] Scraping ${currentDateLabel}...`);
+  const today = new Date();
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + 14);
 
-            const dailyClasses = await page.evaluate((dateLabel) => {
-                const results = [];
-                // Find row containers explicitly
-                const allDivs = Array.from(document.querySelectorAll('div'));
-                
-                // Strict Filter: Must contain Time AND Dash AND be a row
-                const classRows = allDivs.filter(div => {
-                    const t = div.innerText;
-                    return /\b\d{1,2}:\d{2}\b/.test(t) && t.includes('-') && t.length < 150 && !t.includes('FILTER');
-                });
+  const fromDate = today.toISOString().split('T')[0];
+  const toDate = endDate.toISOString().split('T')[0];
 
-                classRows.forEach(row => {
-                    const text = row.innerText; 
-                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                    
-                    // Line 1: "12:30 PM - RIDE: TAYLOR SWIFT"
-                    const headerLine = lines[0];
-                    const timeMatch = headerLine.match(/\b\d{1,2}:\d{2}\s*(?:AM|PM)?\b/i);
-                    
-                    if (timeMatch) {
-                        const startTime = timeMatch[0];
-                        let title = headerLine.replace(startTime, '').replace(/^[-\s]+/, '').trim();
-                        
-                        let instructor = "Staff";
-                        
-                        // Line 2: "Riazul - Ride Studio" or just "Riazul"
-                        if (lines.length > 1) {
-                            const details = lines[1];
-                            // Split by hyphen if it exists
-                            if (details.includes(' - ')) {
-                                instructor = details.split(' - ')[0].trim();
-                            } else if (details.includes('-')) {
-                                instructor = details.split('-')[0].trim();
-                            } else {
-                                instructor = details;
-                            }
-                        }
+  console.log(`[Psycle] Fetching classes from ${fromDate} to ${toDate}...`);
 
-                        let link = null;
-                        const btn = row.querySelector('a');
-                        if (btn && btn.href) link = btn.href;
+  try {
+    const url = `${CODEXFIT_API}/events?from=${fromDate}&to=${toDate}&include=event_type,instructor,studio,location`;
 
-                        const isWaitlist = text.toLowerCase().includes('waitlist') || text.toLowerCase().includes('full');
+    const res = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+      }
+    });
 
-                        if (title.length > 2) {
-                            results.push({
-                                gym: 'Psycle',
-                                raw_date: dateLabel,
-                                start_time: startTime,
-                                class_name: title,
-                                instructor: instructor,
-                                location: 'See URL',
-                                status: isWaitlist ? 'Waitlist' : 'Open',
-                                link
-                            });
-                        }
-                    }
-                });
-                // Dedupe immediately
-                const unique = []; const seen = new Set();
-                results.forEach(r => {
-                    const key = r.start_time + r.class_name + r.instructor;
-                    if(!seen.has(key)) { seen.add(key); unique.push(r); }
-                });
-                return unique;
-            }, currentDateLabel);
+    if (!res.ok) {
+      console.log(`[Psycle] API error: ${res.status}`);
+      return [];
+    }
 
-            dailyClasses.forEach(c => { if (!c.link) c.link = url; });
-            masterList = masterList.concat(dailyClasses);
+    const json = await res.json();
+    const events = json.data || [];
+    const relations = json.relations || {};
 
-            // Click Next
-            const clicked = await page.evaluate(() => {
-                const active = document.querySelector('.slick-current') || document.querySelector('.is-active');
-                if (active && active.nextElementSibling) {
-                    (active.nextElementSibling.querySelector('a, div') || active.nextElementSibling).click();
-                    return true;
-                }
-                const arrow = document.querySelector('.slick-next');
-                if (arrow) { arrow.click(); return true; }
-                return false;
-            });
-            if (!clicked) break;
-            await new Promise(r => setTimeout(r, 1500));
+    // Build lookup maps from relations
+    const locations = {};
+    const instructors = {};
+    const eventTypes = {};
+    const studios = {};
+
+    (relations.locations || []).forEach(l => locations[l.id] = l.name);
+    (relations.instructors || []).forEach(i => instructors[i.id] = i.full_name || i.first_name || 'Instructor');
+    (relations.event_types || []).forEach(e => eventTypes[e.id] = e.name);
+    (relations.studios || []).forEach(s => studios[s.id] = s);
+
+    // Filter out non-visible events and map to class format
+    const allClasses = events
+      .filter(evt => evt.is_visible !== false)
+      .map(evt => {
+        const startTime = new Date(evt.start_at);
+        const dateStr = startTime.toISOString().split('T')[0];
+        const timeStr = startTime.toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: 'Europe/London'
+        });
+
+        // Get location from studio -> location_id
+        const studio = studios[evt.studio_id];
+        const locationName = studio ? (locations[studio.location_id] || 'Psycle') : 'Psycle';
+
+        const instructorName = instructors[evt.instructor_id] || 'Instructor';
+        const className = eventTypes[evt.event_type_id] || 'Psycle Class';
+
+        // Determine status based on API fields
+        let status = 'Open';
+        if (evt.is_fully_booked || evt.occupancy >= evt.capacity) {
+          status = evt.is_waitlistable ? 'Waitlist' : 'Full';
         }
-      } catch(err) { console.log(`[Psycle] Error: ${err.message}`); }
-  }
-  await page.close();
-  
-  // Global Dedupe
-  const finalUnique = []; const finalSeen = new Set();
-  masterList.forEach(c => {
-      // Fix Location Name
-      let locName = 'Psycle Studio';
-      if(c.link.includes('bank')) locName = 'Bank';
-      if(c.link.includes('oxford')) locName = 'Oxford Circus';
-      if(c.link.includes('shoreditch')) locName = 'Shoreditch';
-      if(c.link.includes('notting')) locName = 'Notting Hill';
-      if(c.link.includes('victoria')) locName = 'Victoria';
-      c.location = locName;
 
-      const key = `${c.raw_date}-${c.start_time}-${c.class_name}-${c.instructor}`;
-      if (!finalSeen.has(key)) { finalSeen.add(key); finalUnique.push(c); }
-  });
-  console.log(`[Psycle] Success! Total Clean Count: ${finalUnique.length}`);
-  return finalUnique;
+        // Skip "At Home" / online classes
+        if (locationName.toLowerCase().includes('at home') || locationName.toLowerCase().includes('online')) {
+          return null;
+        }
+
+        return {
+          gym_slug: 'psycle',
+          class_name: className,
+          trainer: instructorName,
+          location: locationName.startsWith('Psycle') ? locationName : `Psycle ${locationName}`,
+          date: dateStr,
+          time: timeStr,
+          status: status,
+          link: 'https://psyclelondon.com/pages/book',
+          source_id: `codexfit-psycle-${evt.id}`
+        };
+      })
+      .filter(Boolean); // Remove nulls (online classes)
+
+    console.log(`[Psycle] ✓ ${allClasses.length} classes from ${PSYCLE_LOCATIONS.length} locations`);
+    return allClasses;
+
+  } catch (error) {
+    console.error(`[Psycle] Error: ${error.message}`);
+    return [];
+  }
 }
+
+export default scrapePsycle;
