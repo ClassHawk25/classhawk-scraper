@@ -84,7 +84,11 @@ async function scrapeBarrys(browser, config) {
         : `Barry's ${rawLocationName}`;
 
       return {
-        gym_slug: `barrys-${locationName.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-')}`,
+        gym_slug: (() => {
+          const slug = locationName.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-');
+          // Remove leading "barrys-" if already present to avoid double prefix
+          return slug.startsWith('barrys-') ? slug : `barrys-${slug}`;
+        })(),
         class_name: cls.class_type?.name || "Barry's Class",
         trainer: cls.instructors?.[0]?.name || 'Instructor',
         location: locationName,
