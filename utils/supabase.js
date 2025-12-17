@@ -50,6 +50,29 @@ function getCategory(className) {
   return 'other';
 }
 
+// Extract brand from gym_slug (e.g., 'barrys-london-soho' -> 'barrys')
+function getBrandSlug(gymSlug) {
+  if (!gymSlug) return gymSlug;
+  const s = gymSlug.toLowerCase();
+
+  // Multi-word brands - check first
+  if (s.startsWith('virgin-active')) return 'virgin-active';
+  if (s.startsWith('core-collective')) return 'core-collective';
+  if (s.startsWith('third-space')) return 'third-space';
+  if (s.startsWith('another-space')) return 'another-space';
+  if (s.startsWith('boom-cycle')) return 'boom-cycle';
+
+  // Known multi-location brands - extract first segment
+  const multiLocationBrands = ['1rebel', 'barrys', 'psycle', 'frame', '3tribes', 'mbo', 'f45', 'blok', 'kobox', 'barrecore', 'heartcore', 'equinox', 'gymbox'];
+  const firstSegment = s.split('-')[0];
+  if (multiLocationBrands.includes(firstSegment)) {
+    return firstSegment;
+  }
+
+  // Single-location studios - brand_slug equals gym_slug
+  return s;
+}
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
@@ -107,6 +130,7 @@ export async function saveToSupabase(classes) {
       status: c.status || 'Full',
       link: c.link || '',
       category: getCategory(finalName),
+      brand_slug: getBrandSlug(finalGym),
       updated_at: new Date()
     };
   }).filter(Boolean); // Remove nulls
