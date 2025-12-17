@@ -50,26 +50,46 @@ function getCategory(className) {
   return 'other';
 }
 
-// Extract brand from gym_slug (e.g., 'barrys-london-soho' -> 'barrys')
+// Extract brand from gym_slug - synced with venues table brand_slugs
 function getBrandSlug(gymSlug) {
   if (!gymSlug) return gymSlug;
   const s = gymSlug.toLowerCase();
 
-  // Multi-word brands - check first
-  if (s.startsWith('virgin-active')) return 'virgin-active';
-  if (s.startsWith('core-collective')) return 'core-collective';
-  if (s.startsWith('third-space')) return 'third-space';
-  if (s.startsWith('another-space')) return 'another-space';
-  if (s.startsWith('boom-cycle')) return 'boom-cycle';
+  // 1. Multi-word brand prefixes (check FIRST - prevents truncation)
+  const multiWordPrefixes = [
+    'virgin-active',
+    'core-collective',
+    'third-space',
+    'another-space',
+    'boom-cycle',
+    'ten-health',
+    'do-it-like-a-mother',
+  ];
 
-  // Known multi-location brands - extract first segment
-  const multiLocationBrands = ['1rebel', 'barrys', 'psycle', 'frame', '3tribes', 'mbo', 'f45', 'blok', 'kobox', 'barrecore', 'heartcore', 'equinox', 'gymbox'];
+  for (const prefix of multiWordPrefixes) {
+    if (s.startsWith(prefix + '-') || s === prefix) {
+      return prefix;
+    }
+  }
+
+  // 2. Normalize virginactive → virgin-active
+  if (s === 'virginactive' || s.startsWith('virginactive-')) {
+    return 'virgin-active';
+  }
+
+  // 3. Known multi-location brands - extract first segment
+  const multiLocationBrands = [
+    '1rebel', 'barrys', 'psycle', 'frame', '3tribes', 'mbo',
+    'f45', 'blok', 'kobox', 'barrecore', 'heartcore', 'equinox',
+    'gymbox', 'mad', '12x3'
+  ];
+
   const firstSegment = s.split('-')[0];
   if (multiLocationBrands.includes(firstSegment)) {
     return firstSegment;
   }
 
-  // Single-location studios - brand_slug equals gym_slug
+  // 4. Single-location studios - keep full gym_slug as brand_slug
   return s;
 }
 
