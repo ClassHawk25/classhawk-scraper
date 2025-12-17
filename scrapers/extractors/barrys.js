@@ -78,7 +78,10 @@ async function scrapeBarrys(browser, config) {
         status = cls.waitlist_available ? 'Waitlist' : 'Full';
       }
 
-      const locationName = cls.location?.name || "Barry's";
+      const rawLocationName = cls.location?.name || 'London';
+      const locationName = rawLocationName.startsWith("Barry")
+        ? rawLocationName
+        : `Barry's ${rawLocationName}`;
 
       return {
         gym_slug: `barrys-${locationName.toLowerCase().replace(/[']/g, '').replace(/\s+/g, '-')}`,
