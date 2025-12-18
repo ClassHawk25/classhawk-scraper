@@ -20,10 +20,8 @@ interface PlaceDetails {
   }[];
 }
 
-// Step 1: Find the Google Place ID for a venue
 async function findPlaceId(name: string, lat: number, lon: number): Promise<string | null> {
   try {
-    // Use Text Search with location bias
     const query = encodeURIComponent(`${name} gym fitness London`);
     const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&location=${lat},${lon}&radius=1000&key=${GOOGLE_MAPS_API_KEY}`;
     
@@ -31,11 +29,9 @@ async function findPlaceId(name: string, lat: number, lon: number): Promise<stri
     const data = await res.json();
     
     if (data.status === 'OK' && data.results?.length > 0) {
-      // Return the first result's place_id
       return data.results[0].place_id;
     }
     
-    // Fallback: try Nearby Search
     const nearbyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lon}&radius=200&keyword=${encodeURIComponent(name)}&type=gym&key=${GOOGLE_MAPS_API_KEY}`;
     const nearbyRes = await fetch(nearbyUrl);
     const nearbyData = await nearbyRes.json();
@@ -51,7 +47,6 @@ async function findPlaceId(name: string, lat: number, lon: number): Promise<stri
   }
 }
 
-// Step 2: Get Place Details including reviews
 async function getPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
   try {
     const fields = 'place_id,rating,user_ratings_total,reviews';
@@ -65,7 +60,7 @@ async function getPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
         place_id: data.result.place_id,
         rating: data.result.rating,
         user_ratings_total: data.result.user_ratings_total,
-        reviews: data.result.reviews?.slice(0, 5) // Keep top 5 reviews
+        reviews: data.result.reviews?.slice(0, 5)
       };
     }
     
@@ -76,7 +71,6 @@ async function getPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
   }
 }
 
-// Step 3: Update venue in database
 async function updateVenueReviews(
   venueId: string, 
   placeId: string,
@@ -106,7 +100,6 @@ async function main() {
     process.exit(1);
   }
   
-  // Get all venues that need reviews (no google_place_id yet, or reviews older than 30 days)
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   
@@ -132,19 +125,17 @@ async function main() {
     const venue = venues![i];
     console.log(`[${i + 1}/${venues!.length}] ${venue.name}`);
     
-    // Skip if no coordinates
     if (!venue.latitude || !venue.longitude) {
       console.log('   ⚠️ Skipped: No coordinates');
       skipped++;
       continue;
     }
     
-    // Get or find place_id
     let placeId = venue.google_place_id;
     
     if (!placeId) {
       placeId = await findPlaceId(venue.name, venue.latitude, venue.longitude);
-      await sleep(200); // Rate limit
+      await sleep(200);
       
       if (!placeId) {
         console.log('   ❌ Could not find Google Place');
@@ -153,9 +144,8 @@ async function main() {
       }
     }
     
-    // Get place details
     const details = await getPlaceDetails(placeId);
-    await sleep(200); // Rate limit
+    await sleep(200);
     
     if (!details) {
       console.log('   ❌ Could not get place details');
@@ -163,7 +153,6 @@ async function main() {
       continue;
     }
     
-    // Update database
     const updated = await updateVenueReviews(
       venue.id,
       placeId,
