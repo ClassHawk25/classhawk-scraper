@@ -90,7 +90,7 @@ async function scrapeFrame(browser, config) {
         date: dateStr,
         time: timeStr,
         status: status,
-        link: `https://www.moveyourframe.com/timetable/`,
+        link: `https://moveyourframe.com/timetable/?_mt=%2Fschedule%2Fdaily%2F48541%3Flocations%3D${FRAME_LOCATIONS.find(l => l.name.toLowerCase() === locationName.toLowerCase())?.id || '48719'}`,
         source_id: `marianatek-frame-${cls.id}`
       };
     });
