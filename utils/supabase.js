@@ -324,7 +324,33 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+/**
+ * Delete classes with dates before today
+ * Runs silently - errors are logged but don't block new data
+ */
+async function cleanupPastClasses() {
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from('classes')
+      .delete()
+      .lt('date', todayStr)
+      .select();
+
+    if (error) {
+      console.error('[Supabase] Cleanup error:', error.message);
+      return;
+    }
+
+    const count = data?.length || 0;
+    console.log(`[Supabase] Cleanup: Deleted ${count} past classes`);
+  } catch (err) {
+    console.error('[Supabase] Cleanup error:', err.message);
+  }
+}
+
 export async function saveToSupabase(classes) {
+  await cleanupPastClasses();
   if (!classes || classes.length === 0) return;
 
   console.log(`[Supabase] Processing ${classes.length} classes...`);
